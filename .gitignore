@@ -1,0 +1,10 @@
+.env
+node_modules/
+.vscode/
+client-old/
+
+*.log
+*.pyc
+__/pycache__/
+.DS_Store
+AppDataLocalProgramsMicrosoft
