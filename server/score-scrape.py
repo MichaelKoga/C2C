@@ -2,6 +2,8 @@ from dotenv import load_dotenv
 import os
 import time
 import re
+import argparse
+from collections import defaultdict
 
 from datetime import datetime
 
@@ -28,122 +30,156 @@ def click_leaderboard(tournament_element):
   except Exception as e: 
     raise Exception(f"Could not find leaderboard button for {e}")
 
-def scrape_leaderboards(tournament_metadata, tour_type):
-  player_scores = {}
+def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url):
+  tournament_docs = []
 
-  for meta in tournament_metadata:
-    index = meta["index"]
+  # Iterate over Stonehenge and Tour events
+  for base_title, tournament_list in tournament_metadata.items():
+    player_scores = {}
 
-    # Refresh the DOM elements
-    tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
-
-    if index >= len(tournaments):
-      continue
-
-    tourney = tournaments[index]
-
-    title = tourney.find_element(By.CLASS_NAME, "title").text
-
-    # Get the start date
-    start_at_element = tourney.find_element(By.CLASS_NAME, "start_at")
-    start_date_str = start_at_element.find_element(By.CLASS_NAME, "value").get_attribute("title")
-
-    # Parse to datetime
-    dt = datetime.strptime(start_date_str, "%Y-%m-%d %H:%M")
-
-    # Format to just date
-    start_date = dt.date().isoformat()
-
-    # Get the leaderboard button element
-    leaderboard_btn = tourney.find_element(By.CLASS_NAME, "leaderboard_button")
-
-    # Click the leaderboard button
-    click_leaderboard(tourney)
-    
-    rows = driver.find_elements(By.XPATH, '//table//tr[@data-uid]')
-
-    if tour_type == "weekly":
+    if "C2C Tour" in base_title:
       # Parse out what week it is
-      match = re.search(r"Week\s+\d+", title)
+      match = re.search(r"Week\s+\d+", base_title)
       if match:
         week = match.group()
         week_number = int(re.search(r"\d+", week).group())
 
       # Parse out what the tourney name is
-      parts = title.split("-")
+      parts = base_title.split("-")
 
       if len(parts) >= 3:
         tourney_name_with_round = parts[2].strip()
         # Remove the round info in parentheses, e.g., "(F9)"
-        tourney_name = re.sub(r"\s*\(F9|B9|F18\)", "", tourney_name_with_round).strip()
+        tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
     else:
       # Parse out what month it is
-      match_month = re.search(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b", title, re.I)
+      match_month = re.search(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b", base_title, re.I)
       if match_month:
         month = match_month.group()
 
-      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Opal|Topaz|Turquoise)\b", title, re.I)
+      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Opal|Topaz|Turquoise)\b", base_title, re.I)
       if match_birthstone:
         birthstone = match_birthstone.group()
 
-    for row in rows:
-      cells = row.find_elements(By.TAG_NAME, 'td')
-      name = cells[1].text
+    for meta in tournament_list:
+      index = meta["index"]
 
-      if name not in player_scores:
-        player_scores[name] = {"name": name}
-
-      if tour_type == "weekly":
-        score = cells[4].text
-
-        if "F9" in title:
-          player_scores[name]["F9"] = score
-        elif "B9" in title:
-          player_scores[name]["B9"] = score
-        elif "F18" in title:
-          player_scores[name]["F18"] = score
-        else:
-          print(f"Could not identify card type of {title}")
-          continue
+      # Refresh the DOM elements
+      if tourney_type == "open":
+        driver.get(open_url)
+        wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+        tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
       else:
-        scores = [cells[3].text, cells[4].text, cells[5].text, cells[6].text]
+        driver.get(closed_url)
+        range_button = driver.find_element(By.ID, "date_range_Past30Days")
+        range_button.click()
+        # wait.until(EC.presence_of_element_located((By.CLASS_NAME, "closed_tournament")))
+        time.sleep(1)
+        tournaments = driver.find_elements(By.CLASS_NAME, "closed_tournament")
 
-        if "F9" in title:
-          player_scores[name]["F9"] = scores
-        elif "B9" in title:
-          player_scores[name]["B9"] = scores
-        elif "F18" in title:
-          player_scores[name]["F18"] = scores
-        else:
-          print(f"Could not identify card type of {title}")
-          continue
+      if index >= len(tournaments):
+        print(f"[SKIP] Tournament at index {index} not found after reload")
+        continue
 
-    driver.back()
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+      tourney = tournaments[index]
 
-  if tour_type == "weekly":
-    return {
-      "tourney_id": f"Wk {week_number} - {tourney_name}",
-      "type": "Tour",
-      "start_date": start_date,
-      "players": list(player_scores.values())
-    }
-  else:
-    return {
-      "tourney_id": f"{month} - {birthstone}",
-      "type": "Stonehenge",
-      "start_date": start_date,
-      "players": list(player_scores.values())
-    }
+      if (tourney_type == "open"):
+        # Get the end date
+        end_date_str = tourney.find_element(By.CLASS_NAME, "ends_in_value").text.strip()
+      else:
+        # Get the closed date
+        end_date_str = tourney.find_element(By.CLASS_NAME, "closed_value").text.strip()
+
+      # Parse to datetime
+      end_dt = datetime.strptime(end_date_str, "%Y-%m-%d %H:%M")
+
+      # Format to just date
+      end_date = end_dt.date().isoformat()
+
+      # Get the leaderboard button element
+      try:
+        leaderboard_btn = tourney.find_element(By.CLASS_NAME, "leaderboard_button")
+      except:
+        print(f"[SKIP] No leaderboard available for: {meta['full_title']}")
+        continue  # skip to the next tournament
+
+      # Click the leaderboard button
+      click_leaderboard(tourney)
+      
+      rows = driver.find_elements(By.XPATH, '//table//tr[@data-uid]')
+
+      if "C2C Tour" in meta["full_title"]:
+        for row in rows:
+          cells = row.find_elements(By.TAG_NAME, 'td')
+          name = cells[1].text
+
+          if name not in player_scores:
+            player_scores[name] = {"name": name}
+
+          score = cells[5].text
+
+          if "F9" in meta["full_title"]:
+            player_scores[name]["F9"] = score
+          elif "B9" in meta["full_title"]:
+            player_scores[name]["B9"] = score
+          elif "F18" in meta["full_title"]:
+            player_scores[name]["F18"] = score
+          else:
+            print(f"Could not identify card type of {meta['full_title']}")
+            continue
+      else:
+        for row in rows:
+          cells = row.find_elements(By.TAG_NAME, 'td')
+          name = cells[1].text
+
+          if name not in player_scores:
+            player_scores[name] = {"name": name}
+
+          scores = [cells[3].text, cells[4].text, cells[5].text, cells[6].text]
+
+          if "F9" in meta["full_title"]:
+            player_scores[name]["F9"] = scores
+          elif "B9" in meta["full_title"]:
+            player_scores[name]["B9"] = scores
+          elif "F18" in meta["full_title"]:
+            player_scores[name]["F18"] = scores
+          else:
+            print(f"Could not identify card type of {meta['full_title']}")
+            continue
+
+    if "C2C Tour" in base_title:
+      tournament_docs.append({
+        "tourney_id": f"Wk {week_number} - {tourney_name}",
+        "type": "Tour",
+        "end_date": end_date,
+        "players": list(player_scores.values())
+      })
+    else:
+      tournament_docs.append({
+        "tourney_id": f"{month} - {birthstone}",
+        "type": "Stonehenge",
+        "end_date": end_date,
+        "players": list(player_scores.values())
+      })
+
+  return tournament_docs
 
 def main():
+  parser = argparse.ArgumentParser(description="Scrape tournaments from site.")
+  parser.add_argument("--tourney-type", choices=["open", "closed"], default="open",
+                      help="Specify which type of tournament to scrape: open or closed")
+
+  args = parser.parse_args()
+  tourney_type = args.tourney_type
+
   load_dotenv()
 
   username = os.getenv("MY_USERNAME")
   password = os.getenv("MY_PASSWORD")
   mongo_uri = os.getenv("MONGO_URI")
   LOGIN_PAGE = os.getenv("LOGIN")
-  TOURNEY_PAGE = os.getenv("TOURNEY_PAGE")
+  OPEN_TOURNEY_PAGE = os.getenv("OPEN_TOURNEY_PAGE")
+  CLOSED_TOURNEY_PAGE = os.getenv("CLOSED_TOURNEY_PAGE")
 
   chrome_options = Options()
 
@@ -181,47 +217,70 @@ def main():
 
   # 2. Submit the form (e.g., click login button inside the modal)
   # Dismiss the cookie banner
-  try:
-    cookie_accept_btn = WebDriverWait(driver, 5).until(
-      EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-accept"))
-    )
-    cookie_accept_btn.click()
-  except TimeoutException:
-    print("No cookie banner appeared - continuing.")
+  # try:
+  #   cookie_accept_btn = WebDriverWait(driver, 5).until(
+  #     EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-accept"))
+  #   )
+  #   cookie_accept_btn.click()
+  # except TimeoutException:
+  #   print("No cookie banner appeared - continuing.")
 
   login_button = driver.find_element(By.ID, "LoginBtn")
-  login_button.click()
+  login_button.click()  
 
   # 3. Logged in and can proceed to scrape or navigate
-  driver.get(TOURNEY_PAGE)
-
-  # Make sure that the tournaments have rendered
-  wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+  if (tourney_type == "open"):
+    driver.get(OPEN_TOURNEY_PAGE)
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+    tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
+  else: 
+    driver.get(CLOSED_TOURNEY_PAGE)
+    wait.until(EC.presence_of_element_located((By.ID, "date_range_Past30Days")))
+    range_button = driver.find_element(By.ID, "date_range_Past30Days")
+    range_button.click()
+    # wait.until(EC.presence_of_element_located((By.CLASS_NAME, "closed_tournament")))
+    time.sleep(2) # Ensure that all tournaments load, not just a subset of them
+    tournaments = driver.find_elements(By.CLASS_NAME, "closed_tournament")
 
   # Temporary dictionary to hold all scores of players by tournament and round
   player_scores = {}
 
   # Scrape all of the C2C Stonehenge and C2C Tour tournaments
-  stonehenge_metadata = []
-  tour_metadata = []
+  all_metadata = defaultdict(list)
 
-  tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
-  for idx, tourney in enumerate(tournaments):
+  for idx in range(len(tournaments)):
     # Get all the tournaments (again), make sure driver is not stale
-    title = tourney.find_element(By.CLASS_NAME, "title").text
+    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "closed_tournament")))
+    tournaments = driver.find_elements(By.CLASS_NAME, "closed_tournament")
 
-    if "C2C Stonehenge" in title:
-      stonehenge_metadata.append({"index": idx, "title": title})
-    elif "C2C Tour" in title:
-      tour_metadata.append({"index": idx, "title": title})
+    if idx >= len(tournaments):
+      print(f"[WARN] Tournament at index {idx} disappeared after reload")
+      continue
 
-  if len(stonehenge_metadata) != 0:
-    tournament_doc = scrape_leaderboards(stonehenge_metadata, "monthly")
-    collection.insert_one(tournament_doc)
+    try:
+      # Wait for the title inside the specific tournament to be present
+      tourney = tournaments[idx]
+      title_elem = WebDriverWait(tourney, 5).until(
+        lambda el: el.find_element(By.CLASS_NAME, "title")
+      )
+      full_title = title_elem.text
+    except Exception as e:
+      print(f"[SKIP] Tournament at index {idx} is stale or missing title: {e}")
+      continue
 
-  if len(tour_metadata) != 0:
-    tournament_doc = scrape_leaderboards(tour_metadata, "weekly")
-    collection.insert_one(tournament_doc)
+    if "C2C Stonehenge" in full_title or "C2C Tour" in full_title:
+      base_title = re.sub(r"\s*\((?:F9|B9|F18)\)", "", full_title).strip()
+      print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
+      all_metadata[base_title].append({"index": idx, "full_title": full_title})
+
+  if len(all_metadata) != 0:
+    tournament_docs = scrape_leaderboards(all_metadata, tourney_type, OPEN_TOURNEY_PAGE, CLOSED_TOURNEY_PAGE)
+    for doc in tournament_docs:
+      collection.replace_one(
+        {"tourney_id": doc["tourney_id"]},
+        doc,
+        upsert=True
+      )
 
   input("Press Enter to exit and close the browser...")
   driver.quit()

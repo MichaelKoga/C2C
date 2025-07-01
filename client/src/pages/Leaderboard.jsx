@@ -4,6 +4,7 @@ import axios from "axios";
 function Leaderboard() {
   const [tournaments, setTournaments] = useState([]);
   const [selectedTournamentId, setSelectedTournamentId] = useState(null);
+  const [selectedTournament, setSelectedTournament] = useState(null);
   const [playersPage, setPlayersPage] = useState(1);
   const [playersPerPage] = useState(10);
   const [players, setPlayers] = useState([]);
@@ -13,22 +14,37 @@ function Leaderboard() {
   const startIndex = (playersPage - 1) * playersPerPage;
   const currentPlayers = players.slice(startIndex, startIndex + playersPerPage);
   const totalPages = Math.ceil(players.length / playersPerPage);
-  // Get the selected tournament
-  const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
+  // const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
 
   // Fetch all tournaments for dropdown on load
   useEffect(() => {
     axios.get("http://localhost:5000/api/leaderboard/tournaments")
       .then(res => {
-        const sorted = res.data.sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
+        const sorted = res.data.sort((a, b) => new Date(a.end_date) - new Date(b.end_date));
         setTournaments(sorted);
       })
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    const tournament = tournaments.find(t => t._id === selectedTournamentId);
+    setSelectedTournament(tournament || null);
+
+    if (tournament?.type !== "Stonehenge") {
+      setDisplayMode("Total"); // reset mode
+    }
+    else if (!["F9", "B9", "F18", "Total"].includes(displayMode)) {
+      setDisplayMode("F9");
+    }
+  }, [selectedTournamentId, tournaments]);
+
   // Fetch the selected tournament player data when selection changes
   useEffect(() => {
     if (!selectedTournamentId) return;
+
+    const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
+    if (!selectedTournament) return;
+    
     axios
       .get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`)
       .then((res) => { 
@@ -163,10 +179,13 @@ function Leaderboard() {
                     ))}
                   </div>
                 )}
-                <table className="w-full mt-2 border">
-                  <thead>
-                    {selectedTournament?.type === "Stonehenge" && displayMode === "Total" ? (
-                      <>
+                <table
+                  key={selectedTournamentId} 
+                  className="w-full mt-2 border"
+                >
+                  {selectedTournament?.type === "Stonehenge" && displayMode === "Total" ? (
+                    <>
+                      <thead>
                         <tr className="bg-gray-200">
                           <th rowSpan={2} className="text-left p-2">Player</th>
                           <th colSpan={4} className="text-center">F9</th>
@@ -175,120 +194,118 @@ function Leaderboard() {
                           <th rowSpan={2} className="text-center">Final</th>
                         </tr>
                         <tr className="bg-gray-100">
-                          <th className="text-center">R1</th>
-                          <th className="text-center">R2</th>
-                          <th className="text-center">R3</th>
-                          <th className="text-center">R4</th>
-                          <th className="text-center">R1</th>
-                          <th className="text-center">R2</th>
-                          <th className="text-center">R3</th>
-                          <th className="text-center">R4</th>
-                          <th className="text-center">R1</th>
-                          <th className="text-center">R2</th>
-                          <th className="text-center">R3</th>
-                          <th className="text-center">R4</th>
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f9-${i}`} className="text-center">{r}</th>)}
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`b9-${i}`} className="text-center">{r}</th>)}
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f18-${i}`} className="text-center">{r}</th>)}
                         </tr>
-                      </>
-                    ) : selectedTournament?.type === "Stonehenge" ? (
-                      <tr className="bg-gray-200">
-                        <th className="text-left p-2">Player</th>
-                        <th className="text-center">R1</th>
-                        <th className="text-center">R2</th>
-                        <th className="text-center">R3</th>
-                        <th className="text-center">R4</th>
-                        <th className="text-center">Final</th>
-                      </tr>
-                    ) : selectedTournament?.type === "Tour" ? (
-                      <tr className="bg-gray-200">
-                        <th className="text-left p-2">Player</th>
-                        <th className="text-center">F9</th>
-                        <th className="text-center">B9</th>
-                        <th className="text-center">F18</th>
-                        <th className="text-center">Final</th>
-                      </tr>
-                    ) : null}
-                  </thead>
-                  <tbody>
-                    {currentPlayers.map((p) => {
-                      if (selectedTournament?.type === "Stonehenge") {
-                        // Stonehenge: display a selected round or cumulative total
-                        const renderStonehenge = () => {
-                          const getSum = arr => arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          const F9 = Array.isArray(p.F9) ? p.F9 : [0, 0, 0, 0];
+                          const B9 = Array.isArray(p.B9) ? p.B9 : [0, 0, 0, 0];
+                          const F18 = Array.isArray(p.F18) ? p.F18 : [0, 0, 0, 0];
+
+                          const getSum = (arr) => arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
+                          const F9Total = getSum(F9);
+                          const B9Total = getSum(B9);
+                          const F18Total = getSum(F18);
+                          const total = F9Total + B9Total + F18Total;
+
+                          return (
+                            <tr key={p.name}>
+                              <td className="p-2">{p.name}</td>
+                              {[...F9, ...B9, ...F18].map((v, i) => (
+                                <td key={i} className="text-center">{v}</td>
+                              ))}
+                              <td className="text-center">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : selectedTournament?.type === "Stonehenge" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className="text-left p-2">Player</th>
+                          <th className="text-center">R1</th>
+                          <th className="text-center">R2</th>
+                          <th className="text-center">R3</th>
+                          <th className="text-center">R4</th>
+                          <th className="text-center">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          const getSum = (arr) => arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
                           const F9Total = getSum(p.F9);
                           const B9Total = getSum(p.B9);
                           const F18Total = getSum(p.F18);
 
+                          let roundArray = [];
+                          let total = 0;
+
                           switch (displayMode) {
                             case "F9":
-                              return <>
-                                <td className="text-center">{p.F9[0]}</td>
-                                <td className="text-center">{p.F9[1]}</td>
-                                <td className="text-center">{p.F9[2]}</td>
-                                <td className="text-center">{p.F9[3]}</td>
-                                <td className="text-center">{F9Total}</td>
-                              </>;
+                              roundArray = p.F9;
+                              total = F9Total;
+                              break;
                             case "B9":
-                              return <>
-                                <td className="text-center">{p.B9[0]}</td>
-                                <td className="text-center">{p.B9[1]}</td>
-                                <td className="text-center">{p.B9[2]}</td>
-                                <td className="text-center">{p.B9[3]}</td>
-                                <td className="text-center">{B9Total}</td>
-                              </>;
+                              roundArray = p.B9;
+                              total = B9Total;
+                              break;
                             case "F18":
-                              return <>
-                                <td className="text-center">{p.F18[0]}</td>
-                                <td className="text-center">{p.F18[1]}</td>
-                                <td className="text-center">{p.F18[2]}</td>
-                                <td className="text-center">{p.F18[3]}</td>
-                                <td className="text-center">{F18Total}</td>
-                              </>;
-                            case "Total":
-                              const total = F9Total + B9Total + F18Total;
-                              return <>
-                                <td className="text-center">{p.F9[0]}</td>
-                                <td className="text-center">{p.F9[1]}</td>
-                                <td className="text-center">{p.F9[2]}</td>
-                                <td className="text-center">{p.F9[3]}</td>
-                                <td className="text-center">{p.B9[0]}</td>
-                                <td className="text-center">{p.B9[1]}</td>
-                                <td className="text-center">{p.B9[2]}</td>
-                                <td className="text-center">{p.B9[3]}</td>
-                                <td className="text-center">{p.F18[0]}</td>
-                                <td className="text-center">{p.F18[1]}</td>
-                                <td className="text-center">{p.F18[2]}</td>
-                                <td className="text-center">{p.F18[3]}</td>
-                                <td className="text-center">{total}</td>
-                              </>;
+                              roundArray = p.F18;
+                              total = F18Total;
+                              break;
                             default:
-                              return <td colSpan={3}>Invalid Mode</td>;
+                              roundArray = [];
+                              total = 0;
                           }
-                        };
 
-                        return (
-                          <tr key={p.name}>
-                            <td className="p-2">{p.name}</td>
-                            {renderStonehenge()}
-                          </tr>
-                        );
-                      } else {
-                        // Tour: single round, show raw values + total
-                        const F9 = parseInt(p.F9) || 0;
-                        const B9 = parseInt(p.B9) || 0;
-                        const F18 = parseInt(p.F18) || 0;
-                        const total = F9 + B9 + F18;
-                        return (
-                          <tr key={p.name}>
-                            <td className="p-2">{p.name}</td>
-                            <td className="text-center">{p.F9}</td>
-                            <td className="text-center">{p.B9}</td>
-                            <td className="text-center">{p.F18}</td>
-                            <td className="text-center">{total}</td>
-                          </tr>
-                        );
-                      }
-                    })}
-                  </tbody>
+                          return (
+                            <tr key={p.name}>
+                              <td className="p-2">{p.name}</td>
+                              {roundArray.map((val, i) => (
+                                <td key={i} className="text-center">{val}</td>
+                              ))}
+                              <td className="text-center">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : selectedTournament?.type === "Tour" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className="text-left p-2">Player</th>
+                          <th className="text-center">F9</th>
+                          <th className="text-center">B9</th>
+                          <th className="text-center">F18</th>
+                          <th className="text-center">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          const F9 = parseInt(p.F9) || 0;
+                          const B9 = parseInt(p.B9) || 0;
+                          const F18 = parseInt(p.F18) || 0;
+                          const total = F9 + B9 + F18;
+
+                          return (
+                            <tr key={p.name}>
+                              <td className="p-2">{p.name}</td>
+                              <td className="text-center">{p.F9}</td>
+                              <td className="text-center">{p.B9}</td>
+                              <td className="text-center">{p.F18}</td>
+                              <td className="text-center">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : null}
                 </table>
               </div>
             )}
