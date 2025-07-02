@@ -1,3 +1,7 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 .App {
   text-align: center;
 }
@@ -43,10 +47,10 @@
   font-style: normal;
 }
 
-.quicksand-600 {
-  font-family: "Quicksand", sans-serif;
+.nunito-600 {
+  font-family: "Nunito", sans-serif;
   font-optical-sizing: auto;
-  font-weight: 600;
+  font-weight: 500;
   font-style: normal;
 }
 
@@ -91,7 +95,7 @@
 }
 
 .navbar ul {
-  font-family: "Quicksand", sans-serif;
+  font-family: "Nunito", sans-serif;
   font-size: 24px;
   list-style: none;
   padding: 0;
@@ -131,18 +135,82 @@
 }
 
 .leaderboard-container h1 {
+  text-align: center;
   font-family: "GFS Didot";
   font-size: 24px;
   color: brown;
 }
 
+.leaderboard-container h2 {
+  text-align: center;
+}
+
 .leaderboard-container {
-  height: 50vh;
+  height: 75vh;
   /* background-color: rgba(245, 245, 245, 0.7);
   border-radius: 25px; */
   padding: 0 50px;
-  margin-bottom: 35vh;
+  margin-bottom: 15vh;
   margin-left: 125vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+}
+
+.leaderboard-container-flipped h1 {
+  text-align: center;
+  font-family: "GFS Didot";
+  font-size: 24px;
+  color: brown;
+}
+
+.leaderboard-container-flipped h2 {
+  text-align: center;
+}
+
+.leaderboard-container-flipped {
+  height: 75vh;
+  background-color: rgba(245, 245, 245, 0.66);
+  border-radius: 25px;
+  padding: 0 50px;
+  margin-left: 2vh;
+  margin-bottom: 35vh;
+  margin-top: 2vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dropdown-menu {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+}
+
+.radio-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0rem auto;            /* center horizontally */
+  padding: 0.1rem 2%;       /* adds "10%" total horizontal space */
+  border-radius: 5px;
+  background-color: rgba(200, 200, 200, 0.7);
+  width: fit-content;            /* only as wide as needed */
+  max-width: 90%;                /* prevents it from getting too wide on small screens */
+}
+
+.table-container {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.middle-container {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: space-between;
+  align-items: center;
+  height: 90vh;
+  background-image: url("./assets/kiawah.jpg");
+  background-size: cover;
+  background-position: center;
+  border-top: 4px solid rgba(255, 255, 255, 0.8);
 }
 
 .footer-container {
@@ -153,8 +221,8 @@
   height: 100px;
   padding: 0 20px;
   display: flex;
-  background-color: cornflowerblue;
-  font-family: "Quicksand", sans-serif;
+  background-color: slategrey;
+  font-family: "Nunito", sans-serif;
   color: white;
 }
 
@@ -167,3 +235,5 @@
   height: 100vh;
   padding-left: 50px;
 }
+
+

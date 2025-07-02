@@ -32,7 +32,7 @@ router.get('/', async (req, res) => {
 // Return list of all tournaments (tourney_id, start_date, type)
 router.get('/tournaments', async (req, res) => {
   try {
-    const tournaments = await Leaderboard.find({}, '_id tourney_id start_date type');
+    const tournaments = await Leaderboard.find({}, '_id tourney_id end_date type');
     res.json(tournaments);
   } catch (err) {
     console.error("Error fetching tournaments:", err);
