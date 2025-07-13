@@ -83,7 +83,7 @@ def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url)
 
       tourney = tournaments[index]
 
-      if (tourney_type == "open"):
+      if tourney_type == "open":
         # Get the end date
         end_date_str = tourney.find_element(By.CLASS_NAME, "ends_in_value").text.strip()
       else:
@@ -116,7 +116,10 @@ def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url)
           if name not in player_scores:
             player_scores[name] = {"name": name}
 
-          score = cells[5].text
+          if tourney_type == "open":
+            score = cells[4].text
+          else:
+            score = cells[5].text
 
           if "F9" in meta["full_title"]:
             player_scores[name]["F9"] = score
@@ -135,7 +138,10 @@ def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url)
           if name not in player_scores:
             player_scores[name] = {"name": name}
 
-          scores = [cells[3].text, cells[4].text, cells[5].text, cells[6].text]
+          if tourney_type == "open":
+            scores = [cells[3].text, cells[4].text, cells[5].text, cells[6].text]
+          else: 
+            scores = [cells[4].text, cells[5].text, cells[6].text, cells[7].text]
 
           if "F9" in meta["full_title"]:
             player_scores[name]["F9"] = scores
@@ -228,10 +234,13 @@ def main():
   login_button = driver.find_element(By.ID, "LoginBtn")
   login_button.click()  
 
+  time.sleep(1)
+
   # 3. Logged in and can proceed to scrape or navigate
   if (tourney_type == "open"):
     driver.get(OPEN_TOURNEY_PAGE)
     wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+    time.sleep(2) # Ensure that all tournaments load, not just a subset of them
     tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
   else: 
     driver.get(CLOSED_TOURNEY_PAGE)
@@ -250,8 +259,12 @@ def main():
 
   for idx in range(len(tournaments)):
     # Get all the tournaments (again), make sure driver is not stale
-    wait.until(EC.presence_of_element_located((By.CLASS_NAME, "closed_tournament")))
-    tournaments = driver.find_elements(By.CLASS_NAME, "closed_tournament")
+    if tourney_type == "open":
+      wait.until(EC.presence_of_element_located((By.CLASS_NAME, "open_tournament")))
+      tournaments = driver.find_elements(By.CLASS_NAME, "open_tournament")
+    else:
+      wait.until(EC.presence_of_element_located((By.CLASS_NAME, "closed_tournament")))
+      tournaments = driver.find_elements(By.CLASS_NAME, "closed_tournament")
 
     if idx >= len(tournaments):
       print(f"[WARN] Tournament at index {idx} disappeared after reload")

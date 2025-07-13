@@ -5,9 +5,15 @@ function Events() {
   return (
     <>
       <div className="header-container">
-        <h1>Events</h1>
+        <h1 className="flex justify-center">Events</h1>
       </div>
-      <div className="hero-content"></div>
+      <div style={{ width: '100%', overflowX: 'auto' }}>
+        <iframe 
+          src="https://docs.google.com/spreadsheets/d/e/2PACX-1vRM4K49AqQTJWvuBNLVVpRwjGLryUNJSPsolJuJryYYEOJ5e_UtDITlSbmfNwHAdiPfYxtVRy4daYYk/pubhtml?gid=1649049611&amp;single=true&amp;widget=true&amp;headers=false"
+          width="100%"
+          height="500"
+        ></iframe>
+      </div>
     </>
   );
 }

@@ -62,6 +62,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
     const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
     if (!selectedTournament) return;
     
+    const getScore = (p) => {
+      if (p.cumulativeTotal !== undefined) return p.cumulativeTotal;
+      if (p.total !== undefined) return p.total;
+      return 99999; // fallback to prevent breaking if missing
+    };
+
     axios
       .get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`)
       .then((res) => { 
@@ -69,7 +75,9 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         let fetchedPlayers = res.data.players || [];
 
         const tournament = tournaments.find(t => t._id === selectedTournamentId);
-        
+
+        // Sort the leaderboard data
+
         if (tournament?.type === "Stonehenge") {
           const getSum = (arr) => 
             arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
@@ -153,11 +161,38 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         else {
           console.error("Error: leaderboard not of type Stonehenge or Tour (skip)");
         }
+
+        let visibleRank = 1;
+        let tieCount = 0;
+        let lastScore = null;
+
+        fetchedPlayers = fetchedPlayers.map((p, i, arr) => {
+          const currScore = getScore(p);
+          let assignedRank;
+
+          if (i === 0) {
+            assignedRank = visibleRank;
+            tieCount = 1;
+          }
+          else if (currScore === lastScore) {
+            assignedRank = null;
+            tieCount++;
+          }
+          else {
+            visibleRank += tieCount; // set the next rank to previous plus ties
+            assignedRank = visibleRank;
+            tieCount = 1; // reset number of ties to 1
+          }
+
+          lastScore = currScore;
+
+          return {...p, rank: assignedRank};
+        });
         
         setPlayers(fetchedPlayers);
         setPlayersPage(1); // reset page on tournament change
       })
-      .catch((err) => console.error("Error fetching leaderboard:", err));
+      .catch((err) => console.error("Error fetching leaderboard:", err)); 
   }, [selectedTournamentId, tournaments, displayMode]);
 
   const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
@@ -165,6 +200,8 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
   const containerClass = flipped
     ? "leaderboard-container-flipped p-4"
     : "leaderboard-container p-4";
+
+  const maxNameLength = Math.max(...players.map(p => (p.name?.length || 0)));
 
   return (
     <>
@@ -216,11 +253,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                   <>
                     <thead>
                       <tr className="bg-gray-200">
-                        <th rowSpan={2} className="text-left p-2">Player</th>
-                        <th colSpan={4} className="text-center">F9</th>
-                        <th colSpan={4} className="text-center">B9</th>
-                        <th colSpan={4} className="text-center">F18</th>
-                        <th rowSpan={2} className="text-center">Final</th>
+                        <th rowSpan={2} className="score-cell">Rank</th>
+                        <th rowSpan={2} className="player-cell">Player</th>
+                        <th colSpan={4} className="score-cell">F9</th>
+                        <th colSpan={4} className="score-cell">B9</th>
+                        <th colSpan={4} className="score-cell">F18</th>
+                        <th rowSpan={2} className="score-cell">Final</th>
                       </tr>
                       <tr className="bg-gray-100">
                         {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f9-${i}`} className="text-center">{r}</th>)}
@@ -242,11 +280,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
                         return (
                           <tr key={p.name}>
-                            <td className="p-2">{p.name}</td>
+                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                            <td className="player-cell">{p.name}</td>
                             {[...F9, ...B9, ...F18].map((v, i) => (
-                              <td key={i} className="text-center">{v}</td>
+                              <td key={i} className="score-cell">{v}</td>
                             ))}
-                            <td className="text-center">{total}</td>
+                            <td className="score-cell">{total}</td>
                           </tr>
                         );
                       })}
@@ -256,12 +295,13 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                   <>
                     <thead>
                       <tr className="bg-gray-200">
-                        <th className="text-left p-2">Player</th>
-                        <th className="text-center">R1</th>
-                        <th className="text-center">R2</th>
-                        <th className="text-center">R3</th>
-                        <th className="text-center">R4</th>
-                        <th className="text-center">Final</th>
+                        <th className="score-cell">Rank</th>
+                        <th className="player-cell">Player</th>
+                        <th className="score-cell">R1</th>
+                        <th className="score-cell">R2</th>
+                        <th className="score-cell">R3</th>
+                        <th className="score-cell">R4</th>
+                        <th className="score-cell">Final</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -294,11 +334,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
                         return (
                           <tr key={p.name}>
-                            <td className="p-2">{p.name}</td>
+                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                            <td className="player-cell">{p.name}</td>
                             {roundArray.map((val, i) => (
-                              <td key={i} className="text-center">{val}</td>
+                              <td key={i} className="score-cell">{val}</td>
                             ))}
-                            <td className="text-center">{total}</td>
+                            <td className="score-cell">{total}</td>
                           </tr>
                         );
                       })}
@@ -308,11 +349,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                   <>
                     <thead>
                       <tr className="bg-gray-200">
-                        <th className="text-left p-2">Player</th>
-                        <th className="text-center">F9</th>
-                        <th className="text-center">B9</th>
-                        <th className="text-center">F18</th>
-                        <th className="text-center">Final</th>
+                        <th className="score-cell">Rank</th>
+                        <th className="player-cell">Player</th>
+                        <th className="score-cell">F9</th>
+                        <th className="score-cell">B9</th>
+                        <th className="score-cell">F18</th>
+                        <th className="score-cell">Final</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -324,11 +366,12 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
                         return (
                           <tr key={p.name}>
-                            <td className="p-2">{p.name}</td>
-                            <td className="text-center">{p.F9}</td>
-                            <td className="text-center">{p.B9}</td>
-                            <td className="text-center">{p.F18}</td>
-                            <td className="text-center">{total}</td>
+                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                            <td className="player-cell">{p.name}</td>
+                            <td className="score-cell">{p.F9}</td>
+                            <td className="score-cell">{p.B9}</td>
+                            <td className="score-cell">{p.F18}</td>
+                            <td className="score-cell">{total}</td>
                           </tr>
                         );
                       })}

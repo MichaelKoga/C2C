@@ -2,6 +2,12 @@
 @tailwind components;
 @tailwind utilities;
 
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 12vh; /* Match your navbar height */
+}
+
 .App {
   text-align: center;
 }
@@ -41,6 +47,22 @@
   }
 }
 
+@keyframes bounce {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 10px);
+  }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .pacifico-regular {
   font-family: "Pacifico", cursive;
   font-weight: 400;
@@ -60,6 +82,18 @@
   font-style: normal;
 }
 
+.ovo-regular {
+  font-family: "Ovo", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.paprika-regular {
+  font-family: "Paprika", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+
 .pebble-image {
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
   max-width: 100%;
@@ -67,7 +101,12 @@
 }
 
 .C2C-image {
-  margin-top: -300px;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  /* margin-top: -300px; */
   max-width: 20%;
   height: auto;
 }
@@ -94,6 +133,10 @@
   z-index: 10;
 }
 
+.navbar-solid {
+  background-color: rgba(0, 0, 0, 0.85); /* darker when scrolled */
+}
+
 .navbar ul {
   font-family: "Nunito", sans-serif;
   font-size: 24px;
@@ -116,8 +159,9 @@
 .header-container {
   display: flex;
   flex-wrap: wrap;
+  flex-direction: column;
   position: relative;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   height: 90vh;
   background-image: url("./assets/pebble.jpg");
@@ -125,49 +169,72 @@
   background-position: center;
 }
 
-.image-container {
+.welcome-container {
   display: flex;
+  flex-direction: row;
   flex-wrap: wrap;
   position: relative;
   justify-content: center;
   align-items: center;
   width: 100%;
+  gap: 2rem;
+  font-family: "Paprika", system-ui;
+  color: green;
+  font-size: 36px;
+  text-align: center;
+  margin-top: -100px;
+  opacity: 0;
+  animation: fadeInUp 5s ease-out forwards;
+  animation-delay: 0.3s;
+}
+
+.down-arrow {
+  position: absolute;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 25px;
+  color: #282c34;
+  cursor: pointer;
+  animation: bounce 1.5s infinite;
 }
 
 .leaderboard-container h1 {
   text-align: center;
-  font-family: "GFS Didot";
-  font-size: 24px;
+  font-family: "Ovo";
+  font-size: 30px;
   color: brown;
 }
 
 .leaderboard-container h2 {
   text-align: center;
+  font-size: 20px;
 }
 
 .leaderboard-container {
-  height: 75vh;
-  /* background-color: rgba(245, 245, 245, 0.7);
-  border-radius: 25px; */
+  height: 90vh;
+  background-color: rgba(245, 245, 245, 0.66);
+  border-radius: 25px;
   padding: 0 50px;
-  margin-bottom: 15vh;
+  margin-bottom: 0vh;
   margin-left: 125vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
 }
 
 .leaderboard-container-flipped h1 {
   text-align: center;
-  font-family: "GFS Didot";
-  font-size: 24px;
+  font-family: "Ovo";
+  font-size: 30px;
   color: brown;
 }
 
 .leaderboard-container-flipped h2 {
   text-align: center;
+  font-size: 20px;
 }
 
 .leaderboard-container-flipped {
-  height: 75vh;
+  height: 85vh;
   background-color: rgba(245, 245, 245, 0.66);
   border-radius: 25px;
   padding: 0 50px;
@@ -200,6 +267,21 @@
   margin-bottom: 0.5rem;
 }
 
+.score-cell {
+  width: 24px;
+  text-align: center;
+  padding: 4px;
+}
+
+.player-cell {
+  width: 24px;
+  text-align: left;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
 .middle-container {
   display: flex;
   flex-wrap: wrap;
@@ -226,14 +308,76 @@
   color: white;
 }
 
-.hero-content {
-  border-color: #282c34;
-  background-color: white;
-  display: flex;
-  justify-content: left;
-  align-items: center;
-  height: 100vh;
-  padding-left: 50px;
+.discord-container h4 {
+  margin: 0;
+  font-family: "Nunito", sans-serif;
 }
 
+.discord-container {
+  border-color: #282c34;
+  border-width: 2px;
+  border-radius: 10px;
+  padding: 20px;
+  background-color: white;
+  display: flex;
+  position: relative;
+  flex-direction: column;
+  align-items: center;
+  margin-left: 150vh;
+  overflow: hidden;
+  z-index: 1;
+}
 
+.discord-container::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  padding: 3px;
+  background: conic-gradient(from 0deg, red, orange, yellow, green, blue, indigo, violet, red);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  border-radius: 10px;
+  z-index: -1;
+  animation: rotate 4s linear infinite;
+}
+
+.discord-icon {
+  width: 10vw;
+  padding: 10px;
+}
+
+.about-us h1 {
+  font-family: "Ovo";
+  font-size: 36px;
+  color: brown;
+}
+
+.about-us h2 {
+  font-family: "Ovo";
+}
+
+.about-us h4 {
+  /* font-family: Arial, Helvetica, sans-serif; */
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+}
+
+.about-us li {
+  /* font-family: Verdana, Geneva, Tahoma, sans-serif; */
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.about-us {
+  background-color: white;
+  padding: 0 20px;
+}
+
+.main-content {
+  background-color: white;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  height: 150vh;
+}
