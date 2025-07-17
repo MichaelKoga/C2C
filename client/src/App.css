@@ -199,6 +199,69 @@ html {
   animation: bounce 1.5s infinite;
 }
 
+/* Toggle between handicap and scratch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+/* Hide the native checkbox but keep it focusable */
+.switch input {
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  cursor: pointer;
+  z-index: 2;  /* Keep it above the slider */
+}
+
+/* The slider background */
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 24px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: background-color 0.4s;
+  z-index: 1;
+}
+
+/* The knob inside the slider */
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.4s;
+}
+
+/* Checked state styles */
+input:checked + .slider {
+  background-color: #4ade80;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+label[for="handicapToggle"] {
+  padding-left: 8px;  /* or whatever padding you want */
+  padding-right: 8px;
+  /* or use shorthand padding: 4px 8px; for top/bottom and left/right */
+}
+
 .leaderboard-container h1 {
   text-align: center;
   font-family: "Ovo";

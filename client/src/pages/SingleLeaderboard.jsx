@@ -7,6 +7,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
   const [playersPerPage] = useState(10);
   const [players, setPlayers] = useState([]);
   const [displayMode, setDisplayMode] = useState("F9");
+  const [handicapMode, setHandicapMode] = useState(false);
 
   // Compute which players to show on the current page
   const startIndex = (playersPage - 1) * playersPerPage;
@@ -37,7 +38,8 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
   // Fetch all tournaments for dropdown on load
   useEffect(() => {
-    axios.get("http://localhost:5000/api/leaderboard/tournaments")
+    axios
+      .get("http://localhost:5000/api/leaderboard/tournaments")
       .then(res => {
         setTournaments(res.data);
       })
@@ -61,7 +63,11 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
     const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
     if (!selectedTournament) return;
+
+    const endDate = new Date(selectedTournament.end_date).toISOString().split("T")[0];
     
+    console.log("End date: ", endDate);
+
     const getScore = (p) => {
       if (p.cumulativeTotal !== undefined) return p.cumulativeTotal;
       if (p.total !== undefined) return p.total;
@@ -77,7 +83,6 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         const tournament = tournaments.find(t => t._id === selectedTournamentId);
 
         // Sort the leaderboard data
-
         if (tournament?.type === "Stonehenge") {
           const getSum = (arr) => 
             arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
@@ -105,27 +110,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
               numValid,
               isComplete };
           })
-          .filter(p => p.cumulativeTotal > 0)
-          .sort((a, b) => {
-            // Sort by completion of most rounds, then by cumulative total ascending
-            if (a.isComplete && !b.isComplete) return -1;
-            if (!a.isComplete && b.isComplete) return 1;
-
-            if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-            
-            switch (displayMode) {
-              case 'F9':
-                return a.F9Total - b.F9Total;
-              case 'B9':
-                return a.B9Total - b.B9Total;
-              case 'F18':
-                return a.F18Total - b.F18Total;
-              case 'Total':
-                return a.cumulativeTotal - b.cumulativeTotal
-              default:
-                return 0;
-            }
-          });
+          .filter(p => p.cumulativeTotal > 0);
         }
         else if (tournament?.type === "Tour")
         {
@@ -149,53 +134,152 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
               numValid,
               isComplete };
           })
-          .filter(p => p.total > 0)
-          .sort((a, b) => {
-            // Sort by completion of most rounds, then by cumulative total ascending
-            if (a.isComplete && !b.isComplete) return -1;
-            if (!a.isComplete && b.isComplete) return 1;
-            if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-            return a.total - b.total;
-          }); 
-        }
-        else {
-          console.error("Error: leaderboard not of type Stonehenge or Tour (skip)");
+          .filter(p => p.total > 0);
         }
 
-        let visibleRank = 1;
-        let tieCount = 0;
-        let lastScore = null;
+        axios
+          .get(`http://localhost:5000/api/handicaps/${endDate}`)
+          .then(hcapRes => {
+            console.log("handicap API response:", hcapRes.data);
 
-        fetchedPlayers = fetchedPlayers.map((p, i, arr) => {
-          const currScore = getScore(p);
-          let assignedRank;
+            const handicapMap = {};
+            for (const entry of hcapRes.data.handicaps) {
+              handicapMap[entry.name] = entry.avg_handicap;
+            }
 
-          if (i === 0) {
-            assignedRank = visibleRank;
-            tieCount = 1;
-          }
-          else if (currScore === lastScore) {
-            assignedRank = null;
-            tieCount++;
-          }
-          else {
-            visibleRank += tieCount; // set the next rank to previous plus ties
-            assignedRank = visibleRank;
-            tieCount = 1; // reset number of ties to 1
-          }
+            // Apply handicap if toggle is ON
+            if (handicapMode) {
+              fetchedPlayers = fetchedPlayers.map(p => {
+                const playerHandicap = handicapMap[p.name] || 0;
+                const halfHandicap = playerHandicap / 2; // For 9 holes
 
-          lastScore = currScore;
+                // Apply handicaps (negative handicaps increases score)
+                if (tournament?.type === "Stonehenge") {
+                  // Adjust individual rounds
+                  const adjustedF9 = (p.F9 || []).map(score => {
+                    const numScore = parseFloat(score);
+                    if (isNaN(numScore)) return score; // skip adjustment
+                    const finalScore = numScore - halfHandicap;
+                    return Math.round(finalScore);
+                  });
+                  const adjustedB9 = (p.B9 || []).map(score => {
+                    const numScore = parseFloat(score);
+                    if (isNaN(numScore)) return score; // skip adjustment
+                    const finalScore = numScore - halfHandicap;
+                    return Math.round(finalScore);
+                  });
+                  const adjustedF18 = (p.F18 || []).map(score => {
+                    const numScore = parseFloat(score);
+                    if (isNaN(numScore)) return score; // skip adjustment
+                    const finalScore = numScore - playerHandicap;
+                    return Math.round(finalScore);
+                  });
 
-          return {...p, rank: assignedRank};
-        });
-        
-        setPlayers(fetchedPlayers);
-        setPlayersPage(1); // reset page on tournament change
-      })
-      .catch((err) => console.error("Error fetching leaderboard:", err)); 
-  }, [selectedTournamentId, tournaments, displayMode]);
+                  // Adjust totals accordingly
+                  const F9Total = adjustedF9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                  const B9Total = adjustedB9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                  const F18Total = adjustedF18.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                  const cumulativeTotal = F9Total + B9Total + F18Total;
+
+                  return {
+                    ...p,
+                    F9: adjustedF9,
+                    B9: adjustedB9,
+                    F18: adjustedF18,
+                    F9Total,
+                    B9Total,
+                    F18Total,
+                    cumulativeTotal,
+                  };
+                } 
+                else if (tournament?.type === "Tour") {
+                  const adjustedF9 = Math.round(parseFloat(p.F9) || 0) - halfHandicap;
+                  const adjustedB9 = Math.round(parseFloat(p.B9) || 0) - halfHandicap;
+                  const adjustedF18 = Math.round(parseFloat(p.F18) || 0) - playerHandicap;
+
+                  const total = adjustedF9 + adjustedB9 + adjustedF18;
+
+                  return {
+                    ...p,
+                    F9: adjustedF9,
+                    B9: adjustedB9,
+                    F18: adjustedF18,
+                    total,
+                  };
+                }
+                return p;
+              });
+            }
+
+            fetchedPlayers.sort((a, b) => {
+              // Sort by completion of most rounds, then by cumulative total ascending
+              if (a.isComplete && !b.isComplete) return -1;
+              if (!a.isComplete && b.isComplete) return 1;
+              if (b.numValid !== a.numValid) return b.numValid - a.numValid;
+              
+              if (tournament?.type === "Tour") {
+                return a.total - b.total;
+              }
+              else if (tournament?.type === "Stonehenge") {
+                switch (displayMode) {
+                  case 'F9':
+                    return a.F9Total - b.F9Total;
+                  case 'B9':
+                    return a.B9Total - b.B9Total;
+                  case 'F18':
+                    return a.F18Total - b.F18Total;
+                  case 'Total':
+                    return a.cumulativeTotal - b.cumulativeTotal
+                  default:
+                    return 0;
+                }
+              }
+            });
+            
+            let visibleRank = 1;
+            let tieCount = 0;
+            let lastScore = null;
+
+            fetchedPlayers = fetchedPlayers.map((p, i, arr) => {
+              const currScore = getScore(p);
+              let assignedRank;
+
+              if (i === 0) {
+                assignedRank = visibleRank;
+                tieCount = 1;
+              }
+              else if (currScore === lastScore) {
+                assignedRank = null;
+                tieCount++;
+              }
+              else {
+                visibleRank += tieCount; // set the next rank to previous plus ties
+                assignedRank = visibleRank;
+                tieCount = 1; // reset number of ties to 1
+              }
+
+              lastScore = currScore;
+
+              return {...p, rank: assignedRank};
+            });
+            
+            setPlayers(fetchedPlayers);
+            setPlayersPage(1); // reset page on tournament change
+          })
+          .catch((err) => console.error("Error fetching handicaps:", err));
+        })
+        .catch(err => console.error("Error fetching handicap:", err));
+  }, [selectedTournamentId, tournaments, displayMode, handicapMode]);
 
   const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
+
+  // Check if end_date is July 2025 or later
+  const showHandicappedOption = (() => {
+    if (!selectedTournament?.end_date) return false;
+    const endDate = new Date(selectedTournament.end_date);
+    const july2025 = new Date("2025-07-01");
+    return endDate >= july2025;
+  })();
 
   const containerClass = flipped
     ? "leaderboard-container-flipped p-4"
@@ -231,6 +315,20 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
             <h2 className="text-xl font-semibold">
               {tournaments.find(t => t._id === selectedTournamentId)?.tourney_id}
             </h2>
+            {showHandicappedOption && (
+              <div className="flex justify-center my-2 gap-2 items-center">
+                <label htmlFor="handicapToggle">Handicap Mode</label>
+                <div className="switch">
+                  <input
+                    id="handicapToggle"
+                    type="checkbox"
+                    checked={handicapMode}
+                    onChange={() => setHandicapMode((prev) => !prev)}
+                  />
+                  <span className="slider"></span>
+                </div>
+              </div>
+            )}
             {tournaments.find(t => t._id === selectedTournamentId)?.type === "Stonehenge" && (
               <div className="radio-buttons">
                 {["F9", "B9", "F18", "Total"].map((mode) => (
@@ -271,12 +369,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                         const F9 = Array.isArray(p.F9) ? p.F9 : [0, 0, 0, 0];
                         const B9 = Array.isArray(p.B9) ? p.B9 : [0, 0, 0, 0];
                         const F18 = Array.isArray(p.F18) ? p.F18 : [0, 0, 0, 0];
-
-                        const getSum = (arr) => arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
-                        const F9Total = getSum(F9);
-                        const B9Total = getSum(B9);
-                        const F18Total = getSum(F18);
-                        const total = F9Total + B9Total + F18Total;
+                        const total = p.cumulativeTotal ?? 0;
 
                         return (
                           <tr key={p.name}>
@@ -306,26 +399,21 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                     </thead>
                     <tbody>
                       {currentPlayers.map((p) => {
-                        const getSum = (arr) => arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
-                        const F9Total = getSum(p.F9);
-                        const B9Total = getSum(p.B9);
-                        const F18Total = getSum(p.F18);
-
                         let roundArray = [];
                         let total = 0;
 
                         switch (displayMode) {
                           case "F9":
                             roundArray = p.F9;
-                            total = F9Total;
+                            total = p.F9Total;
                             break;
                           case "B9":
                             roundArray = p.B9;
-                            total = B9Total;
+                            total = p.B9Total;
                             break;
                           case "F18":
                             roundArray = p.F18;
-                            total = F18Total;
+                            total = p.F18Total;
                             break;
                           default:
                             roundArray = [];
@@ -359,11 +447,6 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                     </thead>
                     <tbody>
                       {currentPlayers.map((p) => {
-                        const F9 = parseInt(p.F9) || 0;
-                        const B9 = parseInt(p.B9) || 0;
-                        const F18 = parseInt(p.F18) || 0;
-                        const total = F9 + B9 + F18;
-
                         return (
                           <tr key={p.name}>
                             <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
@@ -371,7 +454,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                             <td className="score-cell">{p.F9}</td>
                             <td className="score-cell">{p.B9}</td>
                             <td className="score-cell">{p.F18}</td>
-                            <td className="score-cell">{total}</td>
+                            <td className="score-cell">{p.total}</td>
                           </tr>
                         );
                       })}

@@ -1,85 +1,120 @@
 import os
 from pymongo import MongoClient
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from dateutil.parser import parse
 
 mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
 
 client = MongoClient(mongo_uri)
 db = client["tournaments_db"]
-leaderboards = db["leaderboards"]
+leaderboards_collection = db["leaderboards"]
+handicaps_collection = db["handicaps"]
 
 BASELINE = 66
 MAX_ROUNDS = 20
+START_DATE = datetime(2025, 6, 29)
+TODAY = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
+WEEK_STEP = timedelta(days=7)
 
 player_rounds = defaultdict(list)
 today = datetime.today()
 
-def main():
-  # Step 1: Gather all tournament data
-  for leaderboard in leaderboards.find({}, { "players": 1, "end_date": 1 }):
-    date = leaderboard.get("end_date")
+def parse_score(score):
+  try:
+    return int(score)
+  except:
+    return None
 
-    if isinstance(date, str):
-      try:
-        date = parse(date)
-      except:
-        continue
-    
-    if not isinstance(date, datetime) or date > today:
+def collect_rounds(before_date):
+  player_rounds = defaultdict(list)
+
+  for doc in leaderboards_collection.find({}, {"players": 1, "end_date": 1}):
+    end_date = doc.get("end_date")
+
+    if not end_date:
+      continue
+    if isinstance(end_date, str):
+      end_date = datetime.fromisoformat(end_date)
+    if end_date > before_date:
       continue
 
-    for player in leaderboard.get("players", []):
+    for player in doc.get("players", []):
       name = player.get("name")
       if not name:
         continue
 
       for key in ["F9", "B9", "F18"]:
         if key in player:
-          try:
-            raw_score = player[key]
-            # Stonehenge: multiple scores
-            if isinstance(raw_score, list):
-              for score in raw_score:
-                if key in ["F9", "B9"]:
-                  score = int(score)
-                  score *= 2  # Normalize to 18 holes
-                  player_rounds[name].append((score, date))
-                
-            # Tour: single score
-            else:
-              score = int(raw_score)
+          raw = player[key]
 
+          if isinstance(raw, list):
+            for score in raw:
+              val = parse_score(score)
+              if val is None:
+                continue
               if key in ["F9", "B9"]:
-                score *= 2  # Normalize to 18 holes
-                player_rounds[name].append((score, date))
+                val *= 2
+              player_rounds[name].append((val, end_date))
+          elif isinstance(raw, (int, str)):
+            val = parse_score(raw)
+            if val is None:
+              continue
+            if key in ["F9", "B9"]:
+              val *= 2
+            player_rounds[name].append((score, end_date))    
 
-          except (ValueError, TypeError):
-            continue  # Skip bad scores
+  return player_rounds
 
-  # Step 2: Compute handicaps
-  results = []
+def compute_handicap(rounds):
+  recent = sorted(rounds, key=lambda x: x[1], reverse=True)[:MAX_ROUNDS]
 
-  for player, rounds in player_rounds.items():
-    sorted_scores = sorted(rounds, key=lambda x: x[1], reverse=True)
-    top_scores = [s for s, _ in sorted_scores[:MAX_ROUNDS]]
+  scores_only = []
 
-    if not top_scores:
+  for score, _ in recent:
+    try:
+      scores_only.append(int(score))
+    except (ValueError, TypeError):
       continue
 
-    handicaps_list = [s - BASELINE for s in top_scores]
+  if not scores_only:
+    return None
 
-    avg_handicap = round(sum(handicaps_list) / len(handicaps_list), 2)
+  diffs = [s - BASELINE for s in scores_only]
 
-    results.append({
-      "player": player,
-      "average_handicap": avg_handicap
-    })
+  return round(sum(diffs) / len(diffs), 2)
+    
+def main():
+  current_date = START_DATE
 
-  # Step 3: Print results
-  for result in results:
-    print(result)
+  while current_date <= TODAY:
+    print(f"Calculating handicaps for week ending: {current_date.date()}...")
+    player_rounds = collect_rounds(current_date)
+
+    weekly_handicap_doc = []
+
+    for player, rounds in player_rounds.items():
+      handicap = compute_handicap(rounds)
+
+      if handicap is not None:
+        weekly_handicap_doc.append({
+          "name": player,
+          "avg_handicap": handicap        
+        })
+
+    for doc in weekly_handicap_doc:
+      print(doc)
+
+    handicaps_collection.replace_one(
+      { "_id": current_date },
+      {
+        "_id": current_date,
+        "handicaps": weekly_handicap_doc
+      },
+      upsert=True
+    )
+
+    current_date += WEEK_STEP
 
 if __name__ == "__main__":
     main()
