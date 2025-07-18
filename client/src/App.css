@@ -207,20 +207,12 @@ html {
   height: 24px;
 }
 
-/* Hide the native checkbox but keep it focusable */
 .switch input {
   opacity: 0;
-  width: 100%;
-  height: 100%;
-  position: absolute;
-  left: 0;
-  top: 0;
-  margin: 0;
-  cursor: pointer;
-  z-index: 2;  /* Keep it above the slider */
+  width: 0;
+  height: 0;
 }
 
-/* The slider background */
 .slider {
   position: absolute;
   cursor: pointer;
@@ -231,10 +223,8 @@ html {
   right: 0;
   bottom: 0;
   transition: background-color 0.4s;
-  z-index: 1;
 }
 
-/* The knob inside the slider */
 .slider:before {
   position: absolute;
   content: "";
@@ -247,7 +237,6 @@ html {
   transition: transform 0.4s;
 }
 
-/* Checked state styles */
 input:checked + .slider {
   background-color: #4ade80;
 }
@@ -256,10 +245,12 @@ input:checked + .slider:before {
   transform: translateX(26px);
 }
 
-label[for="handicapToggle"] {
-  padding-left: 8px;  /* or whatever padding you want */
+.scratch-label {
   padding-right: 8px;
-  /* or use shorthand padding: 4px 8px; for top/bottom and left/right */
+}
+
+.handicap-label {
+  padding-left: 8px;
 }
 
 .leaderboard-container h1 {
@@ -280,7 +271,7 @@ label[for="handicapToggle"] {
   border-radius: 25px;
   padding: 0 50px;
   margin-bottom: 0vh;
-  margin-left: 125vh;
+  margin-left: 100vh;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
 }
 
@@ -319,6 +310,7 @@ label[for="handicapToggle"] {
   gap: 1rem;
   margin: 0rem auto;            /* center horizontally */
   padding: 0.1rem 2%;       /* adds "10%" total horizontal space */
+  margin-top: 8px;
   border-radius: 5px;
   background-color: rgba(200, 200, 200, 0.7);
   width: fit-content;            /* only as wide as needed */

@@ -24,11 +24,6 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         .filter(t => new Date(t.end_date) >= new Date())
         .sort((a, b) => new Date(a.end_date) - new Date(b.end_date))[0]; // soonest ending
     } 
-    // else if (type === "archived") {
-    //   defaultTournament = tournaments
-    //     .filter(t => new Date(t.end_date) < new Date())
-    //     .sort((a, b) => new Date(b.end_date) - new Date(a.end_date))[0]; // most recent past
-    // }
 
     if (defaultTournament) {
       setSelectedTournamentId(defaultTournament._id);
@@ -57,220 +52,6 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
     }
   }, [selectedTournamentId, tournaments]);
 
-  // Fetch the selected tournament player data when selection changes
-  useEffect(() => {
-    if (!selectedTournamentId) return;
-
-    const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
-    if (!selectedTournament) return;
-
-    const endDate = new Date(selectedTournament.end_date).toISOString().split("T")[0];
-    
-    console.log("End date: ", endDate);
-
-    const getScore = (p) => {
-      if (p.cumulativeTotal !== undefined) return p.cumulativeTotal;
-      if (p.total !== undefined) return p.total;
-      return 99999; // fallback to prevent breaking if missing
-    };
-
-    axios
-      .get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`)
-      .then((res) => { 
-        console.log("API response:", res.data);
-        let fetchedPlayers = res.data.players || [];
-
-        const tournament = tournaments.find(t => t._id === selectedTournamentId);
-
-        // Sort the leaderboard data
-        if (tournament?.type === "Stonehenge") {
-          const getSum = (arr) => 
-            arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
-          
-          fetchedPlayers = fetchedPlayers.map(p => {
-            const F9Total = getSum(p.F9);
-            const B9Total = getSum(p.B9);
-            const F18Total = getSum(p.F18);
-            const cumulativeTotal = F9Total + B9Total + F18Total;
-            
-            const numValid = [...p.F9, ...p.B9, ...p.F18]
-              .filter(x => !isNaN(parseInt(x))).length;
-
-            p.numValid = numValid;
-
-            const maxPossible = [...p.F9, ...p.B9, ...p.F18].length;
-            const isComplete = numValid === maxPossible;
-
-            return { 
-              ...p, 
-              F9Total,
-              B9Total,
-              F18Total,
-              cumulativeTotal, 
-              numValid,
-              isComplete };
-          })
-          .filter(p => p.cumulativeTotal > 0);
-        }
-        else if (tournament?.type === "Tour")
-        {
-          fetchedPlayers = fetchedPlayers.map(p => {
-            const F9 = isNaN(parseInt(p.F9)) ? 0 : parseInt(p.F9);
-            const B9 = isNaN(parseInt(p.B9)) ? 0 : parseInt(p.B9);
-            const F18 = isNaN(parseInt(p.F18)) ? 0 : parseInt(p.F18);
-            const total = F9 + B9 + F18;
-
-            const scores = [p.F9, p.B9, p.F18];
-            const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
-
-            p.numValid = numValid;
-
-            const maxPossible = scores.length;
-            const isComplete = numValid === maxPossible;
-
-            return { 
-              ...p, 
-              total, 
-              numValid,
-              isComplete };
-          })
-          .filter(p => p.total > 0);
-        }
-
-        axios
-          .get(`http://localhost:5000/api/handicaps/${endDate}`)
-          .then(hcapRes => {
-            console.log("handicap API response:", hcapRes.data);
-
-            const handicapMap = {};
-            for (const entry of hcapRes.data.handicaps) {
-              handicapMap[entry.name] = entry.avg_handicap;
-            }
-
-            // Apply handicap if toggle is ON
-            if (handicapMode) {
-              fetchedPlayers = fetchedPlayers.map(p => {
-                const playerHandicap = handicapMap[p.name] || 0;
-                const halfHandicap = playerHandicap / 2; // For 9 holes
-
-                // Apply handicaps (negative handicaps increases score)
-                if (tournament?.type === "Stonehenge") {
-                  // Adjust individual rounds
-                  const adjustedF9 = (p.F9 || []).map(score => {
-                    const numScore = parseFloat(score);
-                    if (isNaN(numScore)) return score; // skip adjustment
-                    const finalScore = numScore - halfHandicap;
-                    return Math.round(finalScore);
-                  });
-                  const adjustedB9 = (p.B9 || []).map(score => {
-                    const numScore = parseFloat(score);
-                    if (isNaN(numScore)) return score; // skip adjustment
-                    const finalScore = numScore - halfHandicap;
-                    return Math.round(finalScore);
-                  });
-                  const adjustedF18 = (p.F18 || []).map(score => {
-                    const numScore = parseFloat(score);
-                    if (isNaN(numScore)) return score; // skip adjustment
-                    const finalScore = numScore - playerHandicap;
-                    return Math.round(finalScore);
-                  });
-
-                  // Adjust totals accordingly
-                  const F9Total = adjustedF9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                  const B9Total = adjustedB9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                  const F18Total = adjustedF18.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                  const cumulativeTotal = F9Total + B9Total + F18Total;
-
-                  return {
-                    ...p,
-                    F9: adjustedF9,
-                    B9: adjustedB9,
-                    F18: adjustedF18,
-                    F9Total,
-                    B9Total,
-                    F18Total,
-                    cumulativeTotal,
-                  };
-                } 
-                else if (tournament?.type === "Tour") {
-                  const adjustedF9 = Math.round(parseFloat(p.F9) || 0) - halfHandicap;
-                  const adjustedB9 = Math.round(parseFloat(p.B9) || 0) - halfHandicap;
-                  const adjustedF18 = Math.round(parseFloat(p.F18) || 0) - playerHandicap;
-
-                  const total = adjustedF9 + adjustedB9 + adjustedF18;
-
-                  return {
-                    ...p,
-                    F9: adjustedF9,
-                    B9: adjustedB9,
-                    F18: adjustedF18,
-                    total,
-                  };
-                }
-                return p;
-              });
-            }
-
-            fetchedPlayers.sort((a, b) => {
-              // Sort by completion of most rounds, then by cumulative total ascending
-              if (a.isComplete && !b.isComplete) return -1;
-              if (!a.isComplete && b.isComplete) return 1;
-              if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-              
-              if (tournament?.type === "Tour") {
-                return a.total - b.total;
-              }
-              else if (tournament?.type === "Stonehenge") {
-                switch (displayMode) {
-                  case 'F9':
-                    return a.F9Total - b.F9Total;
-                  case 'B9':
-                    return a.B9Total - b.B9Total;
-                  case 'F18':
-                    return a.F18Total - b.F18Total;
-                  case 'Total':
-                    return a.cumulativeTotal - b.cumulativeTotal
-                  default:
-                    return 0;
-                }
-              }
-            });
-            
-            let visibleRank = 1;
-            let tieCount = 0;
-            let lastScore = null;
-
-            fetchedPlayers = fetchedPlayers.map((p, i, arr) => {
-              const currScore = getScore(p);
-              let assignedRank;
-
-              if (i === 0) {
-                assignedRank = visibleRank;
-                tieCount = 1;
-              }
-              else if (currScore === lastScore) {
-                assignedRank = null;
-                tieCount++;
-              }
-              else {
-                visibleRank += tieCount; // set the next rank to previous plus ties
-                assignedRank = visibleRank;
-                tieCount = 1; // reset number of ties to 1
-              }
-
-              lastScore = currScore;
-
-              return {...p, rank: assignedRank};
-            });
-            
-            setPlayers(fetchedPlayers);
-            setPlayersPage(1); // reset page on tournament change
-          })
-          .catch((err) => console.error("Error fetching handicaps:", err));
-        })
-        .catch(err => console.error("Error fetching handicap:", err));
-  }, [selectedTournamentId, tournaments, displayMode, handicapMode]);
-
   const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
 
   // Check if end_date is July 2025 or later
@@ -281,11 +62,281 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
     return endDate >= july2025;
   })();
 
+  // Fetch the selected tournament player data when selection changes
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!selectedTournamentId) return;
+
+      const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
+      if (!selectedTournament) return;
+
+      const endDate = new Date(selectedTournament.end_date).toISOString().split("T")[0];
+      
+      console.log("End date: ", endDate);
+
+      const getScore = (p) => {
+        if (p.cumulativeTotal !== undefined) return p.cumulativeTotal;
+        if (p.total !== undefined) return p.total;
+        return 99999; // fallback to prevent breaking if missing
+      };
+
+      const assignRanks = (players, getScore) => {
+        let visibleRank = 1;
+        let tieCount = 0;
+        let lastScore = null;
+
+        players = players.map((p, i) => {
+          const currScore = getScore(p);
+          let assignedRank;
+
+          if (i === 0) {
+            assignedRank = visibleRank;
+            tieCount = 1;
+          }
+          else if (currScore === lastScore) {
+            assignedRank = null;
+            tieCount++;
+          }
+          else {
+            visibleRank += tieCount; // set the next rank to previous plus ties
+            assignedRank = visibleRank;
+            tieCount = 1; // reset number of ties to 1
+          }
+
+          lastScore = currScore;
+
+          return {...p, rank: assignedRank};
+        });
+
+        return players;
+      };
+
+      axios
+        .get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`)
+        .then((res) => { 
+          console.log("API response:", res.data);
+          let fetchedPlayers = res.data.players || [];
+          console.log("Fetched players:", fetchedPlayers);
+
+          const tournament = tournaments.find(t => t._id === selectedTournamentId);
+
+          // Sort the leaderboard data
+          if (tournament?.type === "Stonehenge") {
+            const getSum = (arr) => 
+              arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
+            
+            fetchedPlayers = fetchedPlayers.map(p => {
+              const F9Total = getSum(p.F9);
+              const B9Total = getSum(p.B9);
+              const F18Total = getSum(p.F18);
+              const cumulativeTotal = F9Total + B9Total + F18Total;
+              
+              const numValid = [...p.F9, ...p.B9, ...p.F18]
+                .filter(x => !isNaN(parseInt(x))).length;
+
+              p.numValid = numValid;
+
+              const maxPossible = [...p.F9, ...p.B9, ...p.F18].length;
+              const isComplete = numValid === maxPossible;
+
+              return { 
+                ...p, 
+                F9Total,
+                B9Total,
+                F18Total,
+                cumulativeTotal, 
+                numValid,
+                isComplete };
+            })
+            .filter(p => p.cumulativeTotal > 0)
+            .sort((a, b) => {
+              // Sort by completion of most rounds, then by cumulative total ascending
+              if (a.isComplete && !b.isComplete) return -1;
+              if (!a.isComplete && b.isComplete) return 1;
+              if (b.numValid !== a.numValid) return b.numValid - a.numValid;
+              
+              switch (displayMode) {
+                case 'F9':
+                  return a.F9Total - b.F9Total;
+                case 'B9':
+                  return a.B9Total - b.B9Total;
+                case 'F18':
+                  return a.F18Total - b.F18Total;
+                case 'Total':
+                  return a.cumulativeTotal - b.cumulativeTotal
+                default:
+                  return 0;
+              }
+            });
+          }
+          else if (tournament?.type === "Tour")
+          {
+            fetchedPlayers = fetchedPlayers.map(p => {
+              const F9 = isNaN(parseInt(p.F9)) ? 0 : parseInt(p.F9);
+              const B9 = isNaN(parseInt(p.B9)) ? 0 : parseInt(p.B9);
+              const F18 = isNaN(parseInt(p.F18)) ? 0 : parseInt(p.F18);
+              const total = F9 + B9 + F18;
+
+              const scores = [p.F9, p.B9, p.F18];
+              const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
+
+              p.numValid = numValid;
+
+              const maxPossible = scores.length;
+              const isComplete = numValid === maxPossible;
+
+              return { 
+                ...p, 
+                total, 
+                numValid,
+                isComplete };
+            })
+            .filter(p => p.total > 0)
+            .sort((a, b) => {
+              // Sort by completion of most rounds, then by cumulative total ascending
+              if (a.isComplete && !b.isComplete) return -1;
+              if (!a.isComplete && b.isComplete) return 1;
+              if (b.numValid !== a.numValid) return b.numValid - a.numValid;
+              
+              return a.total - b.total;     
+            });
+          }
+
+          // If handicapped mode is enabled
+          if (handicapMode && showHandicappedOption) {
+            axios
+              .get(`http://localhost:5000/api/handicaps/${endDate}`)
+              .then(hcapRes => {
+                console.log("handicap API response:", hcapRes.data);
+
+                const handicapMap = {};
+                for (const entry of hcapRes.data.handicaps) {
+                  handicapMap[entry.name] = entry.avg_handicap;
+                }
+
+                fetchedPlayers = fetchedPlayers.map(p => {
+                  const playerHandicap = handicapMap[p.name] || 0;
+                  const halfHandicap = playerHandicap / 2; // For 9 holes
+
+                  // Apply handicaps (negative handicaps increases score)
+                  if (tournament?.type === "Stonehenge") {
+                    // Adjust individual rounds
+                    const adjustedF9 = (p.F9 || []).map(score => {
+                      const numScore = parseFloat(score);
+                      if (isNaN(numScore)) return score; // skip adjustment
+                      const finalScore = numScore - halfHandicap;
+                      return Math.round(finalScore);
+                    });
+                    const adjustedB9 = (p.B9 || []).map(score => {
+                      const numScore = parseFloat(score);
+                      if (isNaN(numScore)) return score; // skip adjustment
+                      const finalScore = numScore - halfHandicap;
+                      return Math.round(finalScore);
+                    });
+                    const adjustedF18 = (p.F18 || []).map(score => {
+                      const numScore = parseFloat(score);
+                      if (isNaN(numScore)) return score; // skip adjustment
+                      const finalScore = numScore - playerHandicap;
+                      return Math.round(finalScore);
+                    });
+
+                    // Adjust totals accordingly
+                    const F9Total = adjustedF9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                    const B9Total = adjustedB9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                    const F18Total = adjustedF18.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+                    const cumulativeTotal = F9Total + B9Total + F18Total;
+
+                    return {
+                      ...p,
+                      F9: adjustedF9,
+                      B9: adjustedB9,
+                      F18: adjustedF18,
+                      F9Total,
+                      B9Total,
+                      F18Total,
+                      cumulativeTotal,
+                    };
+                  } 
+                  else if (tournament?.type === "Tour") {
+                    const adjustedF9 = isNaN(parseFloat(p.F9)) ? p.F9 : Math.round(p.F9 - halfHandicap);
+                    const adjustedB9 = isNaN(parseFloat(p.B9)) ? p.B9 : Math.round(p.B9 - halfHandicap);
+                    const adjustedF18 = isNaN(parseFloat(p.F18)) ? p.F18 : Math.round(p.F18 - playerHandicap);
+
+                    const total =
+                      (typeof adjustedF9 === "number" ? adjustedF9 : 0) +
+                      (typeof adjustedB9 === "number" ? adjustedB9 : 0) +
+                      (typeof adjustedF18 === "number" ? adjustedF18 : 0);
+
+                    return {
+                      ...p,
+                      F9: adjustedF9,
+                      B9: adjustedB9,
+                      F18: adjustedF18,
+                      total,
+                    };
+                  }
+                  return p;
+                });
+                
+                fetchedPlayers.sort((a, b) => {
+                  // Sort by completion of most rounds, then by cumulative total ascending
+                  if (a.isComplete && !b.isComplete) return -1;
+                  if (!a.isComplete && b.isComplete) return 1;
+                  if (b.numValid !== a.numValid) return b.numValid - a.numValid;
+                  
+                  if (tournament?.type === "Tour") {
+                    return a.total - b.total;
+                  }
+                  else if (tournament?.type === "Stonehenge") {
+                    switch (displayMode) {
+                      case 'F9':
+                        return a.F9Total - b.F9Total;
+                      case 'B9':
+                        return a.B9Total - b.B9Total;
+                      case 'F18':
+                        return a.F18Total - b.F18Total;
+                      case 'Total':
+                        return a.cumulativeTotal - b.cumulativeTotal;
+                      default:
+                        return 0;
+                    }
+                  }
+                });
+                const rankedPlayers = assignRanks(fetchedPlayers, getScore);
+
+                setPlayers(rankedPlayers);
+                setPlayersPage(1); // reset page on tournament change
+            })
+            .catch((err) => console.error("Error fetching handicaps:", err));
+          }
+          else {
+            const rankedPlayers = assignRanks(fetchedPlayers, getScore);
+
+            setPlayers(rankedPlayers);
+            setPlayersPage(1); // reset page on tournament change
+          }
+      })
+      .catch(err => console.error("Error fetching leaderboards:", err));
+    };
+
+    fetchData();
+  }, [selectedTournamentId, tournaments, displayMode, handicapMode]);
+
+  // Reset the handicap mode option for older leaderboards where handicaps have not been implemented.
+  useEffect(() => {
+    if (!showHandicappedOption && handicapMode) {
+      setHandicapMode(false);
+    }
+  }, [showHandicappedOption]);
+
   const containerClass = flipped
     ? "leaderboard-container-flipped p-4"
     : "leaderboard-container p-4";
 
   const maxNameLength = Math.max(...players.map(p => (p.name?.length || 0)));
+  const formatScore = (score) => {
+    return score === "Not Entered" ? "-" : score;
+  }
 
   return (
     <>
@@ -317,8 +368,8 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
             </h2>
             {showHandicappedOption && (
               <div className="flex justify-center my-2 gap-2 items-center">
-                <label htmlFor="handicapToggle">Handicap Mode</label>
-                <div className="switch">
+                <span className="scratch-label">Scratch</span>
+                <label className="switch relative">
                   <input
                     id="handicapToggle"
                     type="checkbox"
@@ -326,7 +377,8 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                     onChange={() => setHandicapMode((prev) => !prev)}
                   />
                   <span className="slider"></span>
-                </div>
+                </label>
+                <span className="handicap-label">Handicap</span>
               </div>
             )}
             {tournaments.find(t => t._id === selectedTournamentId)?.type === "Stonehenge" && (
@@ -451,9 +503,9 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                           <tr key={p.name}>
                             <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
                             <td className="player-cell">{p.name}</td>
-                            <td className="score-cell">{p.F9}</td>
-                            <td className="score-cell">{p.B9}</td>
-                            <td className="score-cell">{p.F18}</td>
+                            <td className="score-cell">{formatScore(p.F9)}</td>
+                            <td className="score-cell">{formatScore(p.B9)}</td>
+                            <td className="score-cell">{formatScore(p.F18)}</td>
                             <td className="score-cell">{p.total}</td>
                           </tr>
                         );
