@@ -36,6 +36,7 @@ def collect_rounds(before_date):
       continue
     if isinstance(end_date, str):
       end_date = datetime.fromisoformat(end_date)
+    # If the tournament has not ended yet
     if end_date > before_date:
       continue
 
@@ -50,19 +51,20 @@ def collect_rounds(before_date):
 
           if isinstance(raw, list):
             for score in raw:
-              val = parse_score(score)
+              val = parse_score(score) # turns the score into an int
               if val is None:
                 continue
               if key in ["F9", "B9"]:
                 val *= 2
               player_rounds[name].append((val, end_date))
-          elif isinstance(raw, (int, str)):
+          # If score is an integer or string representation
+          elif isinstance(raw, (int, str)): 
             val = parse_score(raw)
             if val is None:
               continue
             if key in ["F9", "B9"]:
               val *= 2
-            player_rounds[name].append((score, end_date))    
+            player_rounds[name].append((val, end_date))    
 
   return player_rounds
 

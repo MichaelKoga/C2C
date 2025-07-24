@@ -71,13 +71,24 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
       if (!selectedTournament) return;
 
       const endDate = new Date(selectedTournament.end_date).toISOString().split("T")[0];
-      
       console.log("End date: ", endDate);
+
+      const getStonehengeHandicapDates = (endDate, weeks=4) => {
+        const dates = [];
+        const baseDate = new Date(endDate);
+        for (let i = 1; i <= weeks; i++) {
+          const d = new Date(baseDate);
+          d.setDate(d.getDate() - (7 * i));
+          dates.push(d.toISOString().split("T")[0]);
+        }
+        dates.sort((a, b) => new Date(a) - new Date(b));
+        return dates;
+      };
 
       const getScore = (p) => {
         if (p.cumulativeTotal !== undefined) return p.cumulativeTotal;
         if (p.total !== undefined) return p.total;
-        return 99999; // fallback to prevent breaking if missing
+        return 99999;
       };
 
       const assignRanks = (players, getScore) => {
@@ -85,240 +96,208 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         let tieCount = 0;
         let lastScore = null;
 
-        players = players.map((p, i) => {
+        return players.map((p, i) => {
           const currScore = getScore(p);
           let assignedRank;
 
           if (i === 0) {
             assignedRank = visibleRank;
             tieCount = 1;
-          }
-          else if (currScore === lastScore) {
+          } else if (currScore === lastScore) {
             assignedRank = null;
             tieCount++;
-          }
-          else {
-            visibleRank += tieCount; // set the next rank to previous plus ties
+          } else {
+            visibleRank += tieCount;
             assignedRank = visibleRank;
-            tieCount = 1; // reset number of ties to 1
+            tieCount = 1;
           }
 
           lastScore = currScore;
-
-          return {...p, rank: assignedRank};
+          return { ...p, rank: assignedRank };
         });
-
-        return players;
       };
 
-      axios
-        .get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`)
-        .then((res) => { 
-          console.log("API response:", res.data);
-          let fetchedPlayers = res.data.players || [];
-          console.log("Fetched players:", fetchedPlayers);
+      try {
+        const res = await axios.get(`http://localhost:5000/api/leaderboard/${selectedTournamentId}`);
+        let fetchedPlayers = res.data.players || [];
+        const tournament = tournaments.find(t => t._id === selectedTournamentId);
 
-          const tournament = tournaments.find(t => t._id === selectedTournamentId);
+        // Parse players
+        if (tournament?.type === "Stonehenge") {
+          const getSum = (arr) =>
+            arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
 
-          // Sort the leaderboard data
-          if (tournament?.type === "Stonehenge") {
-            const getSum = (arr) => 
-              arr.filter(x => !isNaN(parseInt(x))).reduce((sum, val) => sum + parseInt(val), 0);
-            
-            fetchedPlayers = fetchedPlayers.map(p => {
-              const F9Total = getSum(p.F9);
-              const B9Total = getSum(p.B9);
-              const F18Total = getSum(p.F18);
-              const cumulativeTotal = F9Total + B9Total + F18Total;
-              
-              const numValid = [...p.F9, ...p.B9, ...p.F18]
-                .filter(x => !isNaN(parseInt(x))).length;
+          fetchedPlayers = fetchedPlayers.map(p => {
+            const F9Total = getSum(p.F9);
+            const B9Total = getSum(p.B9);
+            const F18Total = getSum(p.F18);
+            const cumulativeTotal = F9Total + B9Total + F18Total;
 
-              p.numValid = numValid;
+            const numValid = [...p.F9, ...p.B9, ...p.F18].filter(x => !isNaN(parseInt(x))).length;
+            const maxPossible = [...p.F9, ...p.B9, ...p.F18].length;
+            const isComplete = numValid === maxPossible;
 
-              const maxPossible = [...p.F9, ...p.B9, ...p.F18].length;
-              const isComplete = numValid === maxPossible;
-
-              return { 
-                ...p, 
-                F9Total,
-                B9Total,
-                F18Total,
-                cumulativeTotal, 
-                numValid,
-                isComplete };
-            })
-            .filter(p => p.cumulativeTotal > 0)
+            return { ...p, F9Total, B9Total, F18Total, cumulativeTotal, numValid, isComplete };
+          }).filter(p => p.cumulativeTotal > 0)
             .sort((a, b) => {
-              // Sort by completion of most rounds, then by cumulative total ascending
               if (a.isComplete && !b.isComplete) return -1;
               if (!a.isComplete && b.isComplete) return 1;
               if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-              
+
               switch (displayMode) {
-                case 'F9':
-                  return a.F9Total - b.F9Total;
-                case 'B9':
-                  return a.B9Total - b.B9Total;
-                case 'F18':
-                  return a.F18Total - b.F18Total;
-                case 'Total':
-                  return a.cumulativeTotal - b.cumulativeTotal
-                default:
-                  return 0;
+                case 'F9': return a.F9Total - b.F9Total;
+                case 'B9': return a.B9Total - b.B9Total;
+                case 'F18': return a.F18Total - b.F18Total;
+                case 'Total': return a.cumulativeTotal - b.cumulativeTotal;
+                default: return 0;
               }
             });
-          }
-          else if (tournament?.type === "Tour")
-          {
-            fetchedPlayers = fetchedPlayers.map(p => {
-              const F9 = isNaN(parseInt(p.F9)) ? 0 : parseInt(p.F9);
-              const B9 = isNaN(parseInt(p.B9)) ? 0 : parseInt(p.B9);
-              const F18 = isNaN(parseInt(p.F18)) ? 0 : parseInt(p.F18);
-              const total = F9 + B9 + F18;
+        } 
+        else if (tournament?.type === "Tour") {
+          fetchedPlayers = fetchedPlayers.map(p => {
+            const F9 = isNaN(parseInt(p.F9)) ? 0 : parseInt(p.F9);
+            const B9 = isNaN(parseInt(p.B9)) ? 0 : parseInt(p.B9);
+            const F18 = isNaN(parseInt(p.F18)) ? 0 : parseInt(p.F18);
+            const total = F9 + B9 + F18;
 
-              const scores = [p.F9, p.B9, p.F18];
-              const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
+            const scores = [p.F9, p.B9, p.F18];
+            const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
+            const maxPossible = scores.length;
+            const isComplete = numValid === maxPossible;
 
-              p.numValid = numValid;
-
-              const maxPossible = scores.length;
-              const isComplete = numValid === maxPossible;
-
-              return { 
-                ...p, 
-                total, 
-                numValid,
-                isComplete };
-            })
-            .filter(p => p.total > 0)
+            return { ...p, total, numValid, isComplete };
+          }).filter(p => p.total > 0)
             .sort((a, b) => {
-              // Sort by completion of most rounds, then by cumulative total ascending
               if (a.isComplete && !b.isComplete) return -1;
               if (!a.isComplete && b.isComplete) return 1;
               if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-              
-              return a.total - b.total;     
+              return a.total - b.total;
             });
+        }
+
+        // Apply handicaps if enabled
+        if (handicapMode && showHandicappedOption && tournament?.type === "Stonehenge") {
+          const dates = getStonehengeHandicapDates(endDate);
+
+          const responses = await Promise.all(
+            dates.map(date => axios.get(`http://localhost:5000/api/handicaps/${date}`))
+          );
+
+          console.log("Fetched handicaps:", responses);
+
+          const handicapByWeek = {};
+
+          responses.forEach((res, weekIdx) => {
+            res.data.handicaps.forEach(entry => {
+              if (!handicapByWeek[entry.name]) {
+                handicapByWeek[entry.name] = [];
+              }
+              handicapByWeek[entry.name][weekIdx] = entry.avg_handicap;
+            });
+          });
+
+          fetchedPlayers = fetchedPlayers.map(p => {
+            const playerHandicaps = handicapByWeek[p.name] || [0, 0, 0, 0];
+            const halfHandicaps = playerHandicaps.map(h => h / 2);
+
+            const adjustedF9 = (p.F9 || []).map((score, idx) => {
+              const numScore = parseFloat(score);
+              if (isNaN(numScore)) return score;
+              return Math.round(numScore - (halfHandicaps[idx] || 0));
+            });
+
+            const adjustedB9 = (p.B9 || []).map((score, idx) => {
+              const numScore = parseFloat(score);
+              if (isNaN(numScore)) return score;
+              return Math.round(numScore - (halfHandicaps[idx] || 0));
+            });
+
+            const adjustedF18 = (p.F18 || []).map((score, idx) => {
+              const numScore = parseFloat(score);
+              if (isNaN(numScore)) return score;
+              return Math.round(numScore - (playerHandicaps[idx] || 0));
+            });
+
+            const F9Total = adjustedF9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+            const B9Total = adjustedB9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+            const F18Total = adjustedF18.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
+            const cumulativeTotal = F9Total + B9Total + F18Total;
+
+            return {
+              ...p,
+              F9: adjustedF9,
+              B9: adjustedB9,
+              F18: adjustedF18,
+              F9Total,
+              B9Total,
+              F18Total,
+              cumulativeTotal,
+            };
+          });
+        }
+        else if (handicapMode && showHandicappedOption && tournament?.type === "Tour") {
+          try {
+            const hcapRes = await axios.get(`http://localhost:5000/api/handicaps/${endDate}`);
+            console.log("handicap API response:", hcapRes.data);
+
+            const handicapMap = {};
+            for (const entry of hcapRes.data.handicaps) {
+              handicapMap[entry.name] = entry.avg_handicap;
+            }
+
+            fetchedPlayers = fetchedPlayers.map(p => {
+              const playerHandicap = handicapMap[p.name] || 0;
+              const halfHandicap = playerHandicap / 2; // For 9 holes
+
+              const adjustedF9 = isNaN(parseFloat(p.F9)) ? p.F9 : Math.round(p.F9 - halfHandicap);
+              const adjustedB9 = isNaN(parseFloat(p.B9)) ? p.B9 : Math.round(p.B9 - halfHandicap);
+              const adjustedF18 = isNaN(parseFloat(p.F18)) ? p.F18 : Math.round(p.F18 - playerHandicap);
+
+              const total =
+                (typeof adjustedF9 === "number" ? adjustedF9 : 0) +
+                (typeof adjustedB9 === "number" ? adjustedB9 : 0) +
+                (typeof adjustedF18 === "number" ? adjustedF18 : 0);
+
+              return {
+                ...p,
+                F9: adjustedF9,
+                B9: adjustedB9,
+                F18: adjustedF18,
+                total,
+              };
+            });
+          } catch (err) {
+            console.error("Error fetching Tour handicaps:", err);
           }
+        }
 
-          // If handicapped mode is enabled
-          if (handicapMode && showHandicappedOption) {
-            axios
-              .get(`http://localhost:5000/api/handicaps/${endDate}`)
-              .then(hcapRes => {
-                console.log("handicap API response:", hcapRes.data);
+        // Final sort + rank
+        fetchedPlayers.sort((a, b) => {
+          if (a.isComplete && !b.isComplete) return -1;
+          if (!a.isComplete && b.isComplete) return 1;
+          if (b.numValid !== a.numValid) return b.numValid - a.numValid;
 
-                const handicapMap = {};
-                for (const entry of hcapRes.data.handicaps) {
-                  handicapMap[entry.name] = entry.avg_handicap;
-                }
-
-                fetchedPlayers = fetchedPlayers.map(p => {
-                  const playerHandicap = handicapMap[p.name] || 0;
-                  const halfHandicap = playerHandicap / 2; // For 9 holes
-
-                  // Apply handicaps (negative handicaps increases score)
-                  if (tournament?.type === "Stonehenge") {
-                    // Adjust individual rounds
-                    const adjustedF9 = (p.F9 || []).map(score => {
-                      const numScore = parseFloat(score);
-                      if (isNaN(numScore)) return score; // skip adjustment
-                      const finalScore = numScore - halfHandicap;
-                      return Math.round(finalScore);
-                    });
-                    const adjustedB9 = (p.B9 || []).map(score => {
-                      const numScore = parseFloat(score);
-                      if (isNaN(numScore)) return score; // skip adjustment
-                      const finalScore = numScore - halfHandicap;
-                      return Math.round(finalScore);
-                    });
-                    const adjustedF18 = (p.F18 || []).map(score => {
-                      const numScore = parseFloat(score);
-                      if (isNaN(numScore)) return score; // skip adjustment
-                      const finalScore = numScore - playerHandicap;
-                      return Math.round(finalScore);
-                    });
-
-                    // Adjust totals accordingly
-                    const F9Total = adjustedF9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                    const B9Total = adjustedB9.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                    const F18Total = adjustedF18.reduce((a, b) => a + (isNaN(b) ? 0 : b), 0);
-                    const cumulativeTotal = F9Total + B9Total + F18Total;
-
-                    return {
-                      ...p,
-                      F9: adjustedF9,
-                      B9: adjustedB9,
-                      F18: adjustedF18,
-                      F9Total,
-                      B9Total,
-                      F18Total,
-                      cumulativeTotal,
-                    };
-                  } 
-                  else if (tournament?.type === "Tour") {
-                    const adjustedF9 = isNaN(parseFloat(p.F9)) ? p.F9 : Math.round(p.F9 - halfHandicap);
-                    const adjustedB9 = isNaN(parseFloat(p.B9)) ? p.B9 : Math.round(p.B9 - halfHandicap);
-                    const adjustedF18 = isNaN(parseFloat(p.F18)) ? p.F18 : Math.round(p.F18 - playerHandicap);
-
-                    const total =
-                      (typeof adjustedF9 === "number" ? adjustedF9 : 0) +
-                      (typeof adjustedB9 === "number" ? adjustedB9 : 0) +
-                      (typeof adjustedF18 === "number" ? adjustedF18 : 0);
-
-                    return {
-                      ...p,
-                      F9: adjustedF9,
-                      B9: adjustedB9,
-                      F18: adjustedF18,
-                      total,
-                    };
-                  }
-                  return p;
-                });
-                
-                fetchedPlayers.sort((a, b) => {
-                  // Sort by completion of most rounds, then by cumulative total ascending
-                  if (a.isComplete && !b.isComplete) return -1;
-                  if (!a.isComplete && b.isComplete) return 1;
-                  if (b.numValid !== a.numValid) return b.numValid - a.numValid;
-                  
-                  if (tournament?.type === "Tour") {
-                    return a.total - b.total;
-                  }
-                  else if (tournament?.type === "Stonehenge") {
-                    switch (displayMode) {
-                      case 'F9':
-                        return a.F9Total - b.F9Total;
-                      case 'B9':
-                        return a.B9Total - b.B9Total;
-                      case 'F18':
-                        return a.F18Total - b.F18Total;
-                      case 'Total':
-                        return a.cumulativeTotal - b.cumulativeTotal;
-                      default:
-                        return 0;
-                    }
-                  }
-                });
-                const rankedPlayers = assignRanks(fetchedPlayers, getScore);
-
-                setPlayers(rankedPlayers);
-                setPlayersPage(1); // reset page on tournament change
-            })
-            .catch((err) => console.error("Error fetching handicaps:", err));
+          if (tournament?.type === "Tour") {
+            return a.total - b.total;
+          } 
+          else if (tournament?.type === "Stonehenge") {
+            switch (displayMode) {
+              case 'F9': return a.F9Total - b.F9Total;
+              case 'B9': return a.B9Total - b.B9Total;
+              case 'F18': return a.F18Total - b.F18Total;
+              case 'Total': return a.cumulativeTotal - b.cumulativeTotal;
+              default: return 0;
+            }
           }
-          else {
-            const rankedPlayers = assignRanks(fetchedPlayers, getScore);
+        });
 
-            setPlayers(rankedPlayers);
-            setPlayersPage(1); // reset page on tournament change
-          }
-      })
-      .catch(err => console.error("Error fetching leaderboards:", err));
+        const rankedPlayers = assignRanks(fetchedPlayers, getScore);
+        setPlayers(rankedPlayers);
+        setPlayersPage(1);
+      } catch (err) {
+        console.error("Error in fetchData:", err);
+      }
     };
-
     fetchData();
   }, [selectedTournamentId, tournaments, displayMode, handicapMode]);
 

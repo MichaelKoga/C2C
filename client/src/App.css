@@ -357,10 +357,65 @@ input:checked + .slider:before {
   align-items: center;
   height: 100px;
   padding: 0 20px;
-  display: flex;
   background-color: slategrey;
   font-family: "Nunito", sans-serif;
   color: white;
+}
+
+.horizontal-span {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  align-items: center;
+  flex-direction: row;
+}
+
+.info-section {
+  width: 66%;
+
+}
+
+.invite-section {
+  margin-left: 5vw;
+  width: 25%;
+}
+
+.expandable-section {
+  width: 100%;
+  margin-left: 0;
+  margin-top: 2rem;
+  margin-bottom: 2rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  overflow: hidden; /* prevents gaps between sections */
+}
+
+.expandable-section-button {
+  width: 100%;
+  text-align: left;
+  font-family: Verdana, Geneva, Tahoma, sans-serif;
+  font-weight: 600;
+  font-size: 18px;
+  border: none;
+  padding: 1rem;
+  background-color: lightblue;
+  border-top-left-radius: 0.5rem;
+  border-top-right-radius: 0.5rem;
+}
+
+.expandable-section-button:hover {
+  color: #ffd700;
+}
+
+.expandable-section-button:focus {
+  outline: none;
+}
+
+.expandable-content {
+  background-color: white;
+  padding: 1rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
 }
 
 .discord-container h4 {
@@ -378,7 +433,7 @@ input:checked + .slider:before {
   position: relative;
   flex-direction: column;
   align-items: center;
-  margin-left: 150vh;
+  text-align: center;
   overflow: hidden;
   z-index: 1;
 }
