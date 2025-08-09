@@ -21,6 +21,10 @@ wait = None
 
 from pymongo import MongoClient
 
+from rapidfuzz import fuzz
+
+SIMILARITY_THRESHOLD = 90  # adjust as needed (90 is a good start)
+
 def click_leaderboard(tournament_element):
   # Get all buttons inside this tournament
   leaderboard_btn = tournament_element.find_element(By.CLASS_NAME, "leaderboard_button")
@@ -223,13 +227,13 @@ def main():
 
   # 2. Submit the form (e.g., click login button inside the modal)
   # Dismiss the cookie banner
-  # try:
-  #   cookie_accept_btn = WebDriverWait(driver, 5).until(
-  #     EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-accept"))
-  #   )
-  #   cookie_accept_btn.click()
-  # except TimeoutException:
-  #   print("No cookie banner appeared - continuing.")
+  try:
+    cookie_accept_btn = WebDriverWait(driver, 5).until(
+      EC.element_to_be_clickable((By.CLASS_NAME, "osano-cm-deny"))
+    )
+    cookie_accept_btn.click()
+  except TimeoutException:
+    print("No cookie banner appeared - continuing.")
 
   login_button = driver.find_element(By.ID, "LoginBtn")
   login_button.click()  
@@ -283,12 +287,31 @@ def main():
 
     if "C2C Stonehenge" in full_title or "C2C Tour" in full_title:
       base_title = re.sub(r"\s*\((?:F9|B9|F18)\)", "", full_title).strip()
-      print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
-      all_metadata[base_title].append({"index": idx, "full_title": full_title})
+
+      # Attempt to find a similar existing base title
+      matched_key = None
+      for existing_key in all_metadata.keys():
+          if fuzz.ratio(base_title, existing_key) >= SIMILARITY_THRESHOLD:
+              matched_key = existing_key
+              break
+
+      if matched_key:
+          print(f"[GROUPED] {base_title} ≈ {matched_key}")
+          all_metadata[matched_key].append({"index": idx, "full_title": full_title})
+      else:
+          print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
+          all_metadata[base_title].append({"index": idx, "full_title": full_title})
 
   if len(all_metadata) != 0:
     tournament_docs = scrape_leaderboards(all_metadata, tourney_type, OPEN_TOURNEY_PAGE, CLOSED_TOURNEY_PAGE)
     for doc in tournament_docs:
+      existing = collection.find_one({"tourney_id": doc["tourney_id"]})
+      
+      # If it's a closed Stonehenge tournament and already exists, preserve the original end_date
+      # Due to a bug on the webstie which data is being scraped, we would like to preserve the old date instead
+      if tourney_type == "closed" and doc["type"] == "Stonehenge" and existing:
+        doc["end_date"] = existing["end_date"]
+
       collection.replace_one(
         {"tourney_id": doc["tourney_id"]},
         doc,

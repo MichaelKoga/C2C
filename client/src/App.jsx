@@ -19,8 +19,6 @@ function App() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  const API_URL = import.meta.env.VITE_API_URL;
-
   return (
     <div>
       <Router>

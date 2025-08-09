@@ -15,10 +15,33 @@ mongoose.connect(process.env.MONGO_URI, {
 .catch(err => console.error('MongoDB connection error:', err));
 
 const leaderboardRoutes = require('./routes/leaderboard');
-app.use('/api/leaderboard', leaderboardRoutes);
+try {
+  app.use('/api/leaderboard', leaderboardRoutes);
+}
+catch (error) {
+  console.log('Error with route pattern:', '/api/leaderboard');
+  throw error;
+}
 
 const handicapRoutes = require('./routes/handicaps');
-app.use('/api/handicaps', handicapRoutes);
+try {
+  app.use('/api/handicaps', handicapRoutes);
+}
+catch (error) {
+  console.log('Error with route pattern:', '/api/handicaps');
+  throw error;
+}
+
+const path = require('path');
+console.log("Registering static frontend route...");
+
+app.use(express.static(path.join(__dirname, '../client/dist'), {
+  fallthrough: true
+}));
+
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+});
 
 const PORT = process.env.PORT || 5000
 app.listen(PORT, () => {

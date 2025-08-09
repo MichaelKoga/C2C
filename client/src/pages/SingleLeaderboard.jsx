@@ -54,11 +54,11 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
   const selectedTournament = tournaments.find(t => t._id === selectedTournamentId);
 
-  // Check if end_date is July 2025 or later
+  // Check if end_date is July 2, 2025 or later, after June Stonehenge end
   const showHandicappedOption = (() => {
     if (!selectedTournament?.end_date) return false;
     const endDate = new Date(selectedTournament.end_date);
-    const july2025 = new Date("2025-07-01");
+    const july2025 = new Date("2025-07-02");
     return endDate >= july2025;
   })();
 
@@ -345,21 +345,6 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
             <h2 className="text-xl font-semibold">
               {tournaments.find(t => t._id === selectedTournamentId)?.tourney_id}
             </h2>
-            {showHandicappedOption && (
-              <div className="flex justify-center my-2 gap-2 items-center">
-                <span className="scratch-label">Scratch</span>
-                <label className="switch relative">
-                  <input
-                    id="handicapToggle"
-                    type="checkbox"
-                    checked={handicapMode}
-                    onChange={() => setHandicapMode((prev) => !prev)}
-                  />
-                  <span className="slider"></span>
-                </label>
-                <span className="handicap-label">Handicap</span>
-              </div>
-            )}
             {tournaments.find(t => t._id === selectedTournamentId)?.type === "Stonehenge" && (
               <div className="radio-buttons">
                 {["F9", "B9", "F18", "Total"].map((mode) => (
@@ -376,132 +361,155 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                 ))}
               </div>
             )}
-            <div className="table-container">
-              <table key={selectedTournamentId}>
-                {selectedTournament?.type === "Stonehenge" && displayMode === "Total" ? (
-                  <>
-                    <thead>
-                      <tr className="bg-gray-200">
-                        <th rowSpan={2} className="score-cell">Rank</th>
-                        <th rowSpan={2} className="player-cell">Player</th>
-                        <th colSpan={4} className="score-cell">F9</th>
-                        <th colSpan={4} className="score-cell">B9</th>
-                        <th colSpan={4} className="score-cell">F18</th>
-                        <th rowSpan={2} className="score-cell">Final</th>
-                      </tr>
-                      <tr className="bg-gray-100">
-                        {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f9-${i}`} className="text-center">{r}</th>)}
-                        {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`b9-${i}`} className="text-center">{r}</th>)}
-                        {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f18-${i}`} className="text-center">{r}</th>)}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPlayers.map((p) => {
-                        const F9 = Array.isArray(p.F9) ? p.F9 : [0, 0, 0, 0];
-                        const B9 = Array.isArray(p.B9) ? p.B9 : [0, 0, 0, 0];
-                        const F18 = Array.isArray(p.F18) ? p.F18 : [0, 0, 0, 0];
-                        const total = p.cumulativeTotal ?? 0;
+            {showHandicappedOption && (
+              <div className="flex justify-center my-2 gap-2 items-center">
+                <span className="scratch-label">Scratch</span>
+                <label className="switch relative">
+                  <input
+                    id="handicapToggle"
+                    type="checkbox"
+                    checked={handicapMode}
+                    onChange={() => setHandicapMode((prev) => !prev)}
+                  />
+                  <span className="slider"></span>
+                </label>
+                <span className="handicap-label">Handicap</span>
+              </div>
+            )}
+            <div className="table-wrapper">
+              <div className="table-container">
+                <table key={selectedTournamentId}>
+                  {selectedTournament?.type === "Stonehenge" && displayMode === "Total" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th rowSpan={2} className="score-cell">Rank</th>
+                          <th rowSpan={2} className="player-cell">Player</th>
+                          <th colSpan={4} className="score-cell">F9</th>
+                          <th colSpan={4} className="score-cell">B9</th>
+                          <th colSpan={4} className="score-cell">F18</th>
+                          <th rowSpan={2} className="score-cell">Final</th>
+                        </tr>
+                        <tr className="bg-gray-100">
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f9-${i}`} className="text-center">{r}</th>)}
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`b9-${i}`} className="text-center">{r}</th>)}
+                          {["R1", "R2", "R3", "R4"].map((r, i) => <th key={`f18-${i}`} className="text-center">{r}</th>)}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          const F9 = Array.isArray(p.F9) ? p.F9 : [0, 0, 0, 0];
+                          const B9 = Array.isArray(p.B9) ? p.B9 : [0, 0, 0, 0];
+                          const F18 = Array.isArray(p.F18) ? p.F18 : [0, 0, 0, 0];
+                          const total = p.cumulativeTotal ?? 0;
 
-                        return (
-                          <tr key={p.name}>
-                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
-                            <td className="player-cell">{p.name}</td>
-                            {[...F9, ...B9, ...F18].map((v, i) => (
-                              <td key={i} className="score-cell">{v}</td>
-                            ))}
-                            <td className="score-cell">{total}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </>
-                ) : selectedTournament?.type === "Stonehenge" ? (
-                  <>
-                    <thead>
-                      <tr className="bg-gray-200">
-                        <th className="score-cell">Rank</th>
-                        <th className="player-cell">Player</th>
-                        <th className="score-cell">R1</th>
-                        <th className="score-cell">R2</th>
-                        <th className="score-cell">R3</th>
-                        <th className="score-cell">R4</th>
-                        <th className="score-cell">Final</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPlayers.map((p) => {
-                        let roundArray = [];
-                        let total = 0;
+                          return (
+                            <tr key={p.name}>
+                              <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                              <td className="player-cell">{p.name}</td>
+                              {[...F9, ...B9, ...F18].map((v, i) => (
+                                <td key={i} className="score-cell">{v}</td>
+                              ))}
+                              <td className="score-cell">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : selectedTournament?.type === "Stonehenge" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className="score-cell">Rank</th>
+                          <th className="player-cell">Player</th>
+                          <th className="score-cell">R1</th>
+                          <th className="score-cell">R2</th>
+                          <th className="score-cell">R3</th>
+                          <th className="score-cell">R4</th>
+                          <th className="score-cell">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          let roundArray = [];
+                          let total = 0;
 
-                        switch (displayMode) {
-                          case "F9":
-                            roundArray = p.F9;
-                            total = p.F9Total;
-                            break;
-                          case "B9":
-                            roundArray = p.B9;
-                            total = p.B9Total;
-                            break;
-                          case "F18":
-                            roundArray = p.F18;
-                            total = p.F18Total;
-                            break;
-                          default:
-                            roundArray = [];
-                            total = 0;
-                        }
+                          switch (displayMode) {
+                            case "F9":
+                              roundArray = p.F9;
+                              total = p.F9Total;
+                              break;
+                            case "B9":
+                              roundArray = p.B9;
+                              total = p.B9Total;
+                              break;
+                            case "F18":
+                              roundArray = p.F18;
+                              total = p.F18Total;
+                              break;
+                            default:
+                              roundArray = [];
+                              total = 0;
+                          }
 
-                        return (
-                          <tr key={p.name}>
-                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
-                            <td className="player-cell">{p.name}</td>
-                            {roundArray.map((val, i) => (
-                              <td key={i} className="score-cell">{val}</td>
-                            ))}
-                            <td className="score-cell">{total}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </>
-                ) : selectedTournament?.type === "Tour" ? (
-                  <>
-                    <thead>
-                      <tr className="bg-gray-200">
-                        <th className="score-cell">Rank</th>
-                        <th className="player-cell">Player</th>
-                        <th className="score-cell">F9</th>
-                        <th className="score-cell">B9</th>
-                        <th className="score-cell">F18</th>
-                        <th className="score-cell">Final</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentPlayers.map((p) => {
-                        return (
-                          <tr key={p.name}>
-                            <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
-                            <td className="player-cell">{p.name}</td>
-                            <td className="score-cell">{formatScore(p.F9)}</td>
-                            <td className="score-cell">{formatScore(p.B9)}</td>
-                            <td className="score-cell">{formatScore(p.F18)}</td>
-                            <td className="score-cell">{p.total}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </>
-                ) : null}
-              </table>
+                          return (
+                            <tr key={p.name}>
+                              <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                              <td className="player-cell">{p.name}</td>
+                              {roundArray.map((val, i) => (
+                                <td key={i} className="score-cell">{val}</td>
+                              ))}
+                              <td className="score-cell">{total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : selectedTournament?.type === "Tour" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className="score-cell">Rank</th>
+                          <th className="player-cell">Player</th>
+                          <th className="score-cell">F9</th>
+                          <th className="score-cell">B9</th>
+                          <th className="score-cell">F18</th>
+                          <th className="score-cell">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          return (
+                            <tr key={p.name}>
+                              <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                              <td className="player-cell">{p.name}</td>
+                              <td className="score-cell">{formatScore(p.F9)}</td>
+                              <td className="score-cell">{formatScore(p.B9)}</td>
+                              <td className="score-cell">{formatScore(p.F18)}</td>
+                              <td className="score-cell">{p.total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : null}
+                </table>
+              </div>
+            </div>
+            <div className="pagination-buttons">
+              <button 
+                className="nav-button"
+                onClick={() => setPlayersPage(p => Math.max(p - 1, 1))} disabled={playersPage === 1}>
+                &lt; Prev
+              </button>
+              <button 
+                className="nav-button"
+                onClick={() => setPlayersPage(p => Math.min(p + 1, totalPages))} disabled={playersPage === totalPages}>
+                Next &gt;
+              </button>
             </div>
           </div>
         )}
-        <button onClick={() => setPlayersPage(p => Math.max(p - 1, 1))} disabled={playersPage === 1}>
-          &lt; Prev
-        </button>
-        <button onClick={() => setPlayersPage(p => Math.min(p + 1, totalPages))} disabled={playersPage === totalPages}>
-          Next &gt;
-        </button>
       </div>
     </>
   );

@@ -1,5 +1,9 @@
 {
   "devDependencies": {
     "prettier": "^3.6.0"
+  },
+  "dependencies": {
+    "framer-motion": "^12.23.12",
+    "swiper": "^11.2.10"
   }
 }
