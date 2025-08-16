@@ -14,6 +14,11 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
+app.use((req, res, next) => {
+  console.log(`Incoming ${req.method} request to: ${req.originalUrl}`);
+  next();
+});
+
 const leaderboardRoutes = require('./routes/leaderboard');
 try {
   app.use('/api/leaderboard', leaderboardRoutes);

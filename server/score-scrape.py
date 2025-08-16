@@ -24,6 +24,7 @@ from pymongo import MongoClient
 from rapidfuzz import fuzz
 
 SIMILARITY_THRESHOLD = 90  # adjust as needed (90 is a good start)
+season_start = datetime(2025, 1, 6)  # first week of season start (Monday)
 
 def click_leaderboard(tournament_element):
   # Get all buttons inside this tournament
@@ -34,36 +35,26 @@ def click_leaderboard(tournament_element):
   except Exception as e: 
     raise Exception(f"Could not find leaderboard button for {e}")
 
+def get_week_number(base_title, end_date):
+  # Parse out what week it is from the base title
+  match = re.search(r"Week\s+\d+", base_title)
+  if match:
+    week = match.group()
+    week_number = int(re.search(r"\d+", week).group())
+  else:
+    # Otherwise, calculate from the season start date
+    if isinstance(end_date, str):
+      end_date = datetime.strptime(end_date, "%Y-%m-%d")
+    week_number = ((end_date - season_start).days // 7) + 1
+
+  return week_number
+
 def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url):
   tournament_docs = []
 
   # Iterate over Stonehenge and Tour events
   for base_title, tournament_list in tournament_metadata.items():
     player_scores = {}
-
-    if "C2C Tour" in base_title:
-      # Parse out what week it is
-      match = re.search(r"Week\s+\d+", base_title)
-      if match:
-        week = match.group()
-        week_number = int(re.search(r"\d+", week).group())
-
-      # Parse out what the tourney name is
-      parts = base_title.split("-")
-
-      if len(parts) >= 3:
-        tourney_name_with_round = parts[2].strip()
-        # Remove the round info in parentheses, e.g., "(F9)"
-        tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
-    else:
-      # Parse out what month it is
-      match_month = re.search(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b", base_title, re.I)
-      if match_month:
-        month = match_month.group()
-
-      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Opal|Topaz|Turquoise)\b", base_title, re.I)
-      if match_birthstone:
-        birthstone = match_birthstone.group()
 
     for meta in tournament_list:
       index = meta["index"]
@@ -158,6 +149,20 @@ def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url)
             continue
 
     if "C2C Tour" in base_title:
+      week_number = get_week_number(base_title, end_date)
+
+      # Parse out what the tourney name is
+      parts = base_title.split("-")
+
+      if len(parts) >= 3:
+        tourney_name_with_round = parts[2].strip()
+        # Remove the round info in parentheses, e.g., "(F9)"
+        tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
+      else:
+        tourney_name_with_round = parts[1].strip()
+        # Remove the round info in parentheses, e.g., "(F9)"
+        tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
+
       tournament_docs.append({
         "tourney_id": f"Wk {week_number} - {tourney_name}",
         "type": "Tour",
@@ -165,6 +170,15 @@ def scrape_leaderboards(tournament_metadata, tourney_type, open_url, closed_url)
         "players": list(player_scores.values())
       })
     else:
+      # Parse out what month it is
+      match_month = re.search(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b", base_title, re.I)
+      if match_month:
+        month = match_month.group()
+
+      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Opal|Topaz|Turquoise)\b", base_title, re.I)
+      if match_birthstone:
+        birthstone = match_birthstone.group()
+
       tournament_docs.append({
         "tourney_id": f"{month} - {birthstone}",
         "type": "Stonehenge",
@@ -291,16 +305,16 @@ def main():
       # Attempt to find a similar existing base title
       matched_key = None
       for existing_key in all_metadata.keys():
-          if fuzz.ratio(base_title, existing_key) >= SIMILARITY_THRESHOLD:
-              matched_key = existing_key
-              break
+        if fuzz.ratio(base_title, existing_key) >= SIMILARITY_THRESHOLD:
+          matched_key = existing_key
+          break
 
       if matched_key:
-          print(f"[GROUPED] {base_title} ≈ {matched_key}")
-          all_metadata[matched_key].append({"index": idx, "full_title": full_title})
+        print(f"[GROUPED] {base_title} ≈ {matched_key}")
+        all_metadata[matched_key].append({"index": idx, "full_title": full_title})
       else:
-          print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
-          all_metadata[base_title].append({"index": idx, "full_title": full_title})
+        print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
+        all_metadata[base_title].append({"index": idx, "full_title": full_title})
 
   if len(all_metadata) != 0:
     tournament_docs = scrape_leaderboards(all_metadata, tourney_type, OPEN_TOURNEY_PAGE, CLOSED_TOURNEY_PAGE)

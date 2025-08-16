@@ -16,6 +16,7 @@ import kogaStAndrews17 from "../assets/kogaStAndrews17.mp4";
 import metroidWolfCreek13 from "../assets/MetroidWolfCreek13.mov";
 import kiwibopCongressional16 from "../assets/KiwibopCongressional16.mp4";
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
+import Tooltip from "../components/Tooltip";
 
 function Home() {
   const [pgaSectionIsOpen, pgaSetIsOpen] = useState(false);
@@ -94,8 +95,9 @@ function Home() {
                     <div className="video-overlay">
                       <span className="video-icon">{playing[idx] ? "❚❚" : "▶"}</span>
                       <div className="fullscreen-icon-container" onClick={enterFullscreen}>
-                        <span className="fullscreen-icon">⛶</span>
-                        <div className="tooltip-text">Enable fullscreen</div>
+                        <Tooltip text="Enable fullscreen">
+                          <span className="fullscreen-icon">⛶</span>
+                        </Tooltip>
                       </div>
                     </div>
                   </div>

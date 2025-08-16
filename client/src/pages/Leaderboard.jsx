@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import SingleLeaderboard from "./SingleLeaderboard";
+import SingleLeaderboard from "../components/SingleLeaderboard";
 
 function Leaderboard() {
   const [currentTournamentId, setCurrentTournamentId] = useState(null);

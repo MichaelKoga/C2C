@@ -192,7 +192,8 @@ body {
   align-items: center;
   margin: 0px auto;
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   width: 100%;
   max-width: 770px;
   max-height: fit-content;
@@ -267,11 +268,16 @@ body {
 
 .video-swiper {
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: visible;
   width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+.swiper-slide {
+  overflow: visible; /* let it expand vertically */
 }
 
 .swiper-custom-pagination {
@@ -283,15 +289,6 @@ body {
   user-select: none;
   z-index: 10;
   color: white !important;
-}
-
-.swiper-pagination {
-  width: 100%;
-  display: flex !important;
-  justify-content: center;
-  color: white;
-  user-select: none;
-  z-index: 10;
 }
 
 .swiper-pagination-bullet {
@@ -489,7 +486,7 @@ input:checked + .slider:before {
   padding: 0 50px;
   margin-bottom: 0vh;
   margin-left: 100vh;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .leaderboard-container-flipped h1 {
@@ -562,6 +559,8 @@ input:checked + .slider:before {
 }
 
 .table-container {
+  display: flex;
+  justify-content: center;
   margin-bottom: 0.25rem;
 }
 

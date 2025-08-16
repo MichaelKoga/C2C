@@ -3,8 +3,11 @@ from pymongo import MongoClient
 from collections import defaultdict
 from datetime import datetime, timedelta
 from dateutil.parser import parse
+from dotenv import load_dotenv
 
-mongo_uri = os.getenv("MONGO_URI", "mongodb://localhost:27017/")
+load_dotenv()
+
+mongo_uri = os.getenv("MONGO_URI")
 
 client = MongoClient(mongo_uri)
 db = client["tournaments_db"]

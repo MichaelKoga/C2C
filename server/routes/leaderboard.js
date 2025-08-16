@@ -43,7 +43,7 @@ try {
     res.json(tournaments);
   } catch (err) {
     console.error("Error fetching tournaments:", err);
-    res.status(500).json({ message: err.messsage });
+    res.status(500).json({ message: err.message });
   }
 });
 } 
