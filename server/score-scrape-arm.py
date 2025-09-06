@@ -95,7 +95,16 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
           elif "F18" in meta["full_title"]:
             player_scores[name]["F18"] = score
           else:
-            print(f"Could not identify card type of {meta['full_title']}")
+            # use the holes type from the metadata
+            if meta["holes"] == "Front 9":
+              player_scores[name]["F9"] = score
+            elif meta["holes"] == "Back 9":
+              player_scores[name]["B9"] = score
+            elif meta["holes"] == "Full 18":
+              player_scores[name]["F18"] = score
+            else:
+              print(f"Could not identify card type of {meta['full_title']}")
+              continue
 
       else:
         for i in range(row_count):
@@ -126,8 +135,16 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
           elif "F18" in meta["full_title"]:
             player_scores[name]["F18"] = scores
           else:
-            print(f"Could not identify card type of {meta['full_title']}")
-            continue
+            # use the holes type from the metadata
+            if meta["holes"] == "Front 9":
+              player_scores[name]["F9"] = score
+            elif meta["holes"] == "Back 9":
+              player_scores[name]["B9"] = score
+            elif meta["holes"] == "Full 18":
+              player_scores[name]["F18"] = score
+            else:
+              print(f"Could not identify card type of {meta['full_title']}")
+              continue
 
     if "C2C Tour" in base_title:
       week_number = get_week_number(base_title, end_date)
@@ -135,14 +152,19 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
       # Parse out what the tourney name is
       parts = base_title.split("-")
 
+      print(f"Working on parsing details from {base_title}")
+
       if len(parts) >= 3:
         tourney_name_with_round = parts[2].strip()
         # Remove the round info in parentheses, e.g., "(F9)"
         tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
-      else:
+      elif len(parts) == 2:
         tourney_name_with_round = parts[1].strip()
         # Remove the round info in parentheses, e.g., "(F9)"
         tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name_with_round).strip()
+      else: 
+        # Only one part, keep the whole name
+        tourney_name = parts[0].strip()
 
       print(player_scores)
 
@@ -225,6 +247,7 @@ async def main():
     for idx in range(count):
       tourney = tournaments.nth(idx)
       full_title = await tourney.locator(".title").inner_text()
+      holes_value = await tourney.locator(".holes_value").first.inner_text() # Stonehenge would have 4, but they are all the same
       if "C2C Stonehenge" in full_title or "C2C Tour" in full_title:
         base_title = re.sub(r"\s*\((?:F9|B9|F18)\)", "", full_title).strip()
         
@@ -236,10 +259,10 @@ async def main():
             break
         if matched_key:
           print(f"[GROUPED] {base_title} ≈ {matched_key}")
-          all_metadata[matched_key].append({"index": idx, "full_title": full_title})
+          all_metadata[matched_key].append({"index": idx, "holes": holes_value, "full_title": full_title})
         else:
           print(f"[ADD] Index {idx} | Full Title: {full_title} → Base Title: {base_title}")
-          all_metadata[base_title].append({"index": idx, "full_title": full_title})
+          all_metadata[base_title].append({"index": idx, "holes": holes_value, "full_title": full_title})
 
     if all_metadata:
       docs = await scrape_leaderboards(page, all_metadata, tourney_type, OPEN_TOURNEY_PAGE, CLOSED_TOURNEY_PAGE)
@@ -250,6 +273,7 @@ async def main():
         
         collection.replace_one({"tourney_id": doc["tourney_id"]}, doc, upsert=True)
 
+    print("Successfully added scores to database!")
     await browser.close()
 
 if __name__ == "__main__":
