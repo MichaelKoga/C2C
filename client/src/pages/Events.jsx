@@ -5,7 +5,7 @@ function Events() {
   return (
     <>
       <div className="header-container">
-        <h1 className="flex justify-center">Events</h1>
+        <h1 className="font-paprika text-green-400 flex justify-center">Events</h1>
       </div>
       <div className="events-frame" style={{ width: '100%', overflowX: 'auto' }}>
         <iframe 

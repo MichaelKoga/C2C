@@ -17,6 +17,8 @@ import metroidWolfCreek13 from "../assets/MetroidWolfCreek13.mov";
 import kiwibopCongressional16 from "../assets/KiwibopCongressional16.mp4";
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
 import Tooltip from "../components/Tooltip";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faPlay, faPause, faExpand } from "@fortawesome/free-solid-svg-icons";
 
 function Home() {
   const [pgaSectionIsOpen, pgaSetIsOpen] = useState(false);
@@ -93,10 +95,18 @@ function Home() {
                       playsInline
                     />
                     <div className="video-overlay">
-                      <span className="video-icon">{playing[idx] ? "❚❚" : "▶"}</span>
+                      <span className="video-icon">
+                        {playing[idx] ? (
+                          <FontAwesomeIcon icon={faPause} /> 
+                        ) : (
+                          <FontAwesomeIcon icon={faPlay} />
+                        )}
+                      </span>
                       <div className="fullscreen-icon-container" onClick={enterFullscreen}>
                         <Tooltip text="Enable fullscreen">
-                          <span className="fullscreen-icon">⛶</span>
+                          <span className="fullscreen-icon">
+                            <FontAwesomeIcon icon={faExpand} />
+                          </span>
                         </Tooltip>
                       </div>
                     </div>
@@ -140,7 +150,7 @@ function Home() {
       </div>
       <section id="clips-section">
         <div className="cool-shots-container">
-          <h1 className="outline-text">C2C ROCKS!</h1>
+          <h1 className="outline-text">C2C Member Highlights!</h1>
           <VideoCollage />
         </div>
       </section>

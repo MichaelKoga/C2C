@@ -12,6 +12,54 @@ from playwright.async_api import async_playwright
 SIMILARITY_THRESHOLD = 90
 season_start = datetime(2025, 1, 6)
 
+# Define a mapping of possible month spellings → full month names
+MONTH_MAP = {
+    "jan": "January", "january": "January",
+    "feb": "February", "february": "February",
+    "mar": "March", "march": "March",
+    "apr": "April", "april": "April",
+    "may": "May",
+    "jun": "June", "june": "June",
+    "jul": "July", "july": "July",
+    "aug": "August", "august": "August",
+    "sep": "September", "sept": "September", "september": "September",
+    "oct": "October", "october": "October",
+    "nov": "November", "november": "November",
+    "dec": "December", "december": "December",
+}
+
+# Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Tourmaline|Topaz|Turquoise
+
+BIRTHSTONE_TO_MONTH = {
+    "Garnet": "January",
+    "Amethyst": "February",
+    "Aquamarine": "March",
+    "Diamond": "April",
+    "Emerald": "May",
+    "Pearl": "June",
+    "Ruby": "July",
+    "Peridot": "August",
+    "Sapphire": "September",
+    "Tourmaline": "October",
+    "Topaz": "November",
+    "Turquoise": "December", 
+}
+
+MONTH_TO_BIRTHSTONE = {
+    "January": "Garnet",
+    "February": "Amethyst",
+    "March": "Aquamarine",
+    "April": "Diamond",
+    "May": "Emerald",
+    "June": "Pearl",
+    "July": "Ruby",
+    "August": "Peridot",
+    "September": "Sapphire",
+    "October": "Tourmaline",
+    "November": "Topaz",
+    "December": "Turquoise",
+}
+
 async def click_leaderboard(page, tournament_locator):
   leaderboard_btn = tournament_locator.locator(".leaderboard_button")
   await leaderboard_btn.click()
@@ -45,10 +93,16 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
         tournaments = page.locator(".open_tournament")
       else:
         await page.goto(closed_url)
-        page.locator("#date_range_Past30Days").click()
+        await page.wait_for_load_state("domcontentloaded")
+
+        await page.click("#date_range_Past30Days")
+
+        await page.locator(".closed_tournament").first.wait_for(state="visible", timeout=20000)
+        await asyncio.sleep(1)
         tournaments = page.locator(".closed_tournament")
 
       count = await tournaments.count()
+
       if index >= count:
         print(f"[SKIP] Tournament at index {index} not found after reload")
         continue
@@ -175,23 +229,45 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
         "players": list(player_scores.values())
       })
     else:
+      month = None
+      birthstone = None
       # Parse out what month it is
-      match_month = re.search(r"\b(January|February|March|April|May|June|July|August|September|October|November|December)\b", base_title, re.I)
+      match_month = re.search(
+        r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
+        r"Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\b",
+        base_title,
+        re.I
+      )
       if match_month:
-        month = match_month.group()
+        raw_month = match_month.group()
+        month = MONTH_MAP[raw_month.lower()]
 
-      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Opal|Topaz|Turquoise)\b", base_title, re.I)
+      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Tourmaline|Topaz|Turquoise)\b", base_title, re.I)
       if match_birthstone:
         birthstone = match_birthstone.group()
 
       print(player_scores)
 
-      tournament_docs.append({
-        "tourney_id": f"{month} - {birthstone}",
-        "type": "Stonehenge",
-        "end_date": end_date,
-        "players": list(player_scores.values())
-      })
+      tourney_id = None
+
+      if month and birthstone:
+        tourney_id = f"{month} - {birthstone}"
+      elif month and not birthstone:
+        birthstone = MONTH_TO_BIRTHSTONE[month]
+        tourney_id = f"{month} - {birthstone}"
+      elif not month and birthstone:
+        month = BIRTHSTONE_TO_MONTH[birthstone]
+        tourney_id = f"{month} - {birthstone}"
+      else:
+        print(f"Could not ID {meta['full_title']}: Missing month and birthstone information")
+
+      if tourney_id not None:
+        tournament_docs.append({
+          "tourney_id": tourney_id,
+          "type": "Stonehenge",
+          "end_date": end_date,
+          "players": list(player_scores.values())
+        })
 
   return tournament_docs
 
@@ -218,7 +294,11 @@ async def main():
   collection = db["leaderboards"]
 
   async with async_playwright() as p:
-    browser = await p.chromium.launch(headless=False)  # set True on server
+    browser = await p.chromium.launch(
+      headless=False,             # must be True for Lambda
+      args=["--no-sandbox", "--disable-dev-shm-usage"]  # required for Lambda
+    )
+
     page = await browser.new_page()
     await page.goto(LOGIN_PAGE)
 
@@ -234,22 +314,33 @@ async def main():
 
     if tourney_type == "open":
       await page.goto(OPEN_TOURNEY_PAGE)
+      await page.wait_for_load_state("domcontentloaded")
       tournaments = page.locator(".open_tournament")
     else:
       await page.goto(CLOSED_TOURNEY_PAGE)
+      await page.wait_for_load_state("domcontentloaded")
+
       await page.click("#date_range_Past30Days")
+
+      await page.locator(".closed_tournament").first.wait_for(state="visible", timeout=20000)
+      await asyncio.sleep(1)
+
       tournaments = page.locator(".closed_tournament")
 
     all_metadata = defaultdict(list)
 
     count = await tournaments.count()
 
+    print(f"Found {count} total tournaments!")
+
     for idx in range(count):
+      print(f"Parsing tournament #{idx}...")
       tourney = tournaments.nth(idx)
       full_title = await tourney.locator(".title").inner_text()
       holes_value = await tourney.locator(".holes_value").first.inner_text() # Stonehenge would have 4, but they are all the same
       if "C2C Stonehenge" in full_title or "C2C Tour" in full_title:
         base_title = re.sub(r"\s*\((?:F9|B9|F18)\)", "", full_title).strip()
+        print(f"Base title {base_title}")
         
         # Attempt to find a similar existing base title
         matched_key = None
