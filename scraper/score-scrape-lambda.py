@@ -261,7 +261,7 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
       else:
         print(f"Could not ID {meta['full_title']}: Missing month and birthstone information")
 
-      if tourney_id not None:
+      if tourney_id is not None:
         tournament_docs.append({
           "tourney_id": tourney_id,
           "type": "Stonehenge",

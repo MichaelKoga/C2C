@@ -9,3 +9,7 @@ datadump/
 __/pycache__/
 .DS_Store
 AppDataLocalProgramsMicrosoft
+.vercel
+scraper/snapshot.js
+public/api/
+.env.local

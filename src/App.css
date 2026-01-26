@@ -1,0 +1,784 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 12vh; /* Match your navbar height */
+}
+
+body {
+  overflow-x: hidden;
+}
+
+.App {
+  text-align: center;
+}
+
+.App-logo {
+  height: 40vmin;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .App-logo {
+    animation: App-logo-spin infinite 20s linear;
+  }
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: calc(10px + 2vmin);
+  color: white;
+}
+
+.App-link {
+  color: #61dafb;
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translate(-50%, 0);
+  }
+  50% {
+    transform: translate(-50%, 10px);
+  }
+}
+
+@keyframes fadeInUp {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.pacifico-regular {
+  font-family: "Pacifico", cursive;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.nunito-600 {
+  font-family: "Nunito", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+}
+
+.gfs-didot-regular {
+  font-family: "GFS Didot", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.ovo-regular {
+  font-family: "Ovo", serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.paprika-regular {
+  font-family: "Paprika", system-ui;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.russo-one-regular {
+  font-family: "Russo One", sans-serif;
+  font-weight: 400;
+  font-style: normal;
+}
+
+.pebble-image {
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  max-width: 100%;
+  height: auto;
+}
+
+.C2C-image {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  /* margin-top: -300px; */
+  max-width: 20%;
+  height: auto;
+}
+
+.highlights-image {
+  padding-top: 5vh;
+  height: auto;
+  width: 350px;
+}
+
+.highlights-image-holder {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: center;
+  background: linear-gradient(plum, lightblue);
+}
+
+.collage {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);  /* 3 columns */
+  grid-template-rows: repeat(3, auto);    /* 3 rows */
+  gap: 1rem;  
+  padding: 2rem 1rem;
+  justify-items: center;
+  width: fit-content;         /* shrink to fit the content */
+  margin: 0 auto;             /* center horizontally */
+}
+
+.video-inner-wrapper {
+  position: relative;
+  max-width: 100%;
+  margin: 0 auto;
+  /* Use flex column to stack top margin, video, pagination vertically */
+  display: flex;
+  align-items: center;
+}
+
+.video-outer-wrapper {
+  width: 100%;
+  position: relative;
+  display: flex;
+  margin-top: 0;
+  padding-top: 4rem;
+  padding-bottom: 2rem;
+  flex-direction: column;
+  align-items: center;
+  justify-items: center;
+  background-color: rgba(15, 15, 15, 0.25);
+  border-radius: 32px;
+}
+
+.collage-video-container {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;     /* keeps videos proportional */
+  max-width: 650px;         /* or whatever width you want */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.collage-video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  border-style: solid;
+  border-width: 2.5px;
+  border-radius: 5px;
+  background-color: rgb(25, 25, 25);
+  object-fit: contain;
+}
+
+.carousel-wrapper {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  align-items: center;
+  margin: 0px auto;
+  justify-content: center;
+  overflow-x: hidden;
+  overflow-y: visible;
+  width: 100%;
+  max-width: 770px;
+  max-height: fit-content;
+}
+
+.video-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  opacity: 0;
+  background-color: rgba(0, 0, 0, 0.25);
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+  pointer-events: none; /* Let clicks go through except on children with pointer-events:auto */
+}
+
+.collage-video-container:hover .video-overlay {
+  opacity: 1;
+}
+
+.video-icon {
+  font-size: 2.5rem;
+  color: white;
+  pointer-events: none;
+}
+
+.fullscreen-icon {
+  font-size: 1.75rem;
+  color: white;
+  position: absolute;
+  bottom: 0.5rem;
+  right: 0.5rem;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.fullscreen-icon-container {
+  position: absolute;
+  display: inline-flex;
+  cursor: pointer;
+  bottom: 8px;
+  right: 8px;
+}
+
+.tooltip-text {
+  visibility: hidden;
+  width: 110px;
+  background-color: white;
+  color: black;
+  text-align: center;
+  border-radius: 5px;
+  padding: 4px 6px;
+  position: absolute;
+  transform: translateX(-66%);
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-size: 0.75rem;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.fullscreen-icon-container:hover .tooltip-text {
+  visibility: visible;
+  opacity: 1;
+}
+
+.video-swiper {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: visible;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.swiper-slide {
+  overflow: visible; /* let it expand vertically */
+}
+
+.swiper-custom-pagination {
+  margin-top: 2rem;
+  display: flex !important;
+  width: 100%;
+  justify-content: center;
+  gap: 8px;
+  user-select: none;
+  z-index: 10;
+  color: white !important;
+}
+
+.swiper-pagination-bullet {
+  margin: 0 6px;
+}
+
+.swiper-button-prev,
+.swiper-button-next {
+  position: absolute;
+  color: white !important;
+  margin-top: 0 !important;  /* disables swiper's calc shifting */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+  width: 40px;
+  height: 40px;
+  border-radius: 9999px;
+}
+
+.swiper-button-prev:hover,
+.swiper-button-next:hover {
+  color: wheat !important;   /* hover arrow color */
+  cursor: pointer;
+}
+
+.swiper-button-prev {
+  left: 1rem !important;
+}
+
+.swiper-button-next {
+  right: 1rem !important;
+}
+
+.navbar h1 {
+  font-family: "Pacifico", cursive;
+  color: lightskyblue;
+  font-size: 50px;
+  text-align: left;
+}
+
+.navbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 12vh;
+  padding: 0 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.5);
+  color: white;
+  z-index: 10;
+}
+
+.navbar-solid {
+  background-color: rgba(0, 0, 0, 0.85); /* darker when scrolled */
+}
+
+.navbar ul {
+  font-family: "Nunito", sans-serif;
+  font-size: 24px;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  gap: 5rem;
+}
+
+.navbar a {
+  color: white;
+  text-decoration: none;
+}
+
+.navbar a:hover {
+  color: #ffd700;
+}
+
+.header-container {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: column;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  height: 90vh;
+  background-image: url("./assets/pebble.jpg");
+  background-size: cover;
+  background-position: center;
+}
+
+.welcome-container {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  gap: 2rem;
+  font-family: "Paprika", system-ui;
+  color: green;
+  font-size: 36px;
+  text-align: center;
+  margin-top: -100px;
+  opacity: 0;
+  animation: fadeInUp 5s ease-out forwards;
+  animation-delay: 0.3s;
+}
+
+.down-arrow {
+  position: absolute;
+  bottom: 5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  height: 25px;
+  color: #282c34;
+  cursor: pointer;
+  animation: bounce 1.5s infinite;
+}
+
+/* Toggle between handicap and scratch */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  background-color: #ccc;
+  border-radius: 24px;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  transition: background-color 0.4s;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  border-radius: 50%;
+  transition: transform 0.4s;
+}
+
+input:checked + .slider {
+  background-color: #4ade80;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+.scratch-label {
+  padding-right: 8px;
+}
+
+.handicap-label {
+  padding-left: 8px;
+}
+
+.leaderboard-container h1 {
+  text-align: center;
+  font-family: "Ovo";
+  font-size: 30px;
+  margin-bottom: 10px;
+  color: brown;
+}
+
+.leaderboard-container h2 {
+  text-align: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.leaderboard-container {
+  position: relative;
+  height: 90vh;
+  background-color: rgba(245, 245, 245, 0.66);
+  border-radius: 25px;
+  padding: 0 50px;
+  margin-bottom: 0vh;
+  margin-left: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.leaderboard-container-flipped h1 {
+  text-align: center;
+  font-family: "Ovo";
+  font-size: 30px;
+  margin-bottom: 10px;
+  color: brown;
+}
+
+.leaderboard-container-flipped h2 {
+  text-align: center;
+  font-size: 20px;
+  margin-bottom: 10px;
+}
+
+.leaderboard-container-flipped {
+  position: relative;
+  height: 87.5vh;
+  background-color: rgba(245, 245, 245, 0.66);
+  border-radius: 25px;
+  padding: 0 40px;
+  margin-left: 2vh;
+  margin-bottom: 35vh;
+  margin-top: 2vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.dropdown-menu {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem 1rem;
+  min-width: max-content;
+  padding-right: 2rem; /* or adjust as needed */
+  box-sizing: border-box;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 0.5rem;
+  background-color: rgba(245, 245, 245, 0.8);
+  color: black;
+  appearance: none;            /* removes default OS style */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='16' viewBox='0 0 24 24' width='16' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/></svg>");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 1rem;
+  cursor: pointer;
+  margin-bottom: -10px;
+}
+
+.radio-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin: 0rem auto;            /* center horizontally */
+  padding: 0.1rem 2%;       /* adds "10%" total horizontal space */
+  margin-bottom: 8px;
+  border-radius: 5px;
+  background-color: rgba(200, 200, 200, 0.7);
+  width: fit-content;            /* only as wide as needed */
+  max-width: 90%;                /* prevents it from getting too wide on small screens */
+}
+
+.table-wrapper {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  margin-bottom: 3rem; /* leave space for sticky buttons */
+}
+
+.table-container {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.25rem;
+}
+
+.pagination-buttons {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  /* gap: 0.5rem; */
+}
+
+.nav-button {
+  padding: 0.25rem 0.5rem;
+  color: black;
+  background-color: rgba(245, 245, 245, 0.9);
+  border: none;
+  /* border-radius: 5px; */
+  cursor: pointer;
+  font-weight: 500;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* transition: background-color 0.3s ease; */
+}
+
+.nav-button:hover:not(:disabled) {
+  background-color: rgb(205, 255, 205);
+}
+
+.nav-button:disabled {
+  background-color: rgba(245, 245, 245, 0.4);
+  cursor: not-allowed;
+}
+
+.score-cell {
+  width: 24px;
+  text-align: center;
+  padding: 4px;
+}
+
+.player-cell {
+  width: 24px;
+  text-align: left;
+  padding-left: 16px;
+  padding-right: 16px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+
+.middle-container {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  justify-content: space-between;
+  align-items: center;
+  height: 90vh;
+  background-image: url("./assets/kiawah.jpg");
+  background-size: cover;
+  background-position: center;
+  border-top: 4px solid rgba(255, 255, 255, 0.8);
+}
+
+.footer-container {
+  display: flex;
+  position: relative;
+  justify-content: center;
+  align-items: center;
+  height: 100px;
+  padding: 0 20px;
+  background-color: rgb(200, 160, 70);
+  font-family: "Nunito", sans-serif;
+  color: white;
+}
+
+.horizontal-span {
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  /* align-items: center; */
+  flex-direction: row;
+}
+
+.info-section {
+  width: 66%;
+}
+
+.invite-section {
+  margin-left: 5vw;
+  width: 25%;
+}
+
+.expandable-section {
+  width: 100%;
+  margin-left: 0;
+  margin-bottom: 2rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+  overflow: hidden; /* prevents gaps between sections */
+}
+
+.expandable-section-button {
+  width: 100%;
+  text-align: left;
+  font-family: "Ovo";
+  font-weight: 600;
+  font-size: 24px;
+  border-style: double;
+  border-width: 10px;
+  border-color: seashell;
+  color: seashell;
+  padding: 1rem;
+  background-color: rgba(245, 245, 245, 0.3);
+}
+
+.expandable-section-button:hover {
+  color: wheat;
+}
+
+.expandable-section-button:focus {
+  outline: none;
+}
+
+.expandable-content {
+  background-color: rgba(55, 55, 55, 0.5);
+  padding: 1rem;
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.discord-container h4 {
+  margin: 0;
+  font-family: "Nunito", sans-serif;
+  color: wheat;
+}
+
+.discord-container {
+  border-color: seashell;
+  border-style: dotted;
+  border-width: 3px;
+  border-radius: 30px;
+  padding: 20px;
+  background-color: rgba(55, 55, 55, 0.25);
+  display: flex;
+  position: relative;
+  flex-direction: row;
+  align-items: center;
+  text-align: center;
+  overflow: hidden;
+  z-index: 1;
+  text-decoration: none;
+}
+
+.discord-icon {
+  position: relative;
+  width: 100px;
+  padding: 10px;
+}
+
+.cool-shots-container h1 {
+  margin-top: 2rem;
+  font-family: "Russo";
+  text-shadow: 
+    -1px -1px 0 chocolate;
+  font-size: 40px;
+  color: wheat
+}
+
+.cool-shots-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-image: url("./assets/pebble-2.jpg");
+  background-size: cover;
+  height: 100vh;
+  margin-top: 4px;
+}
+
+.about-us h1 {
+  font-family: "Ovo";
+  font-size: 40px;
+  color: coral;
+}
+
+.about-us h2 {
+  font-family: "Ovo";
+  color: seashell;
+  width: 60%;
+}
+
+.about-us h4 {
+  color: seashell;
+  font-family: "Ovo";
+  font-size: 20px;
+}
+
+.about-us li {
+  color: seashell;
+  font-family: "Ovo";
+  font-size: 20px;
+}
+
+.about-us {
+  padding: 0 20px;
+  background-color: rgba(225, 225, 225, 0.1);
+}
+
+.main-content {
+  margin-top: 4px;
+  display: flex;
+  flex-wrap: wrap;
+  position: relative;
+  min-height: 133vh;
+  overflow-y: visible;
+  background-image: url("./assets/pebble-3.jpg");
+  background-repeat: repeat; /* or 'no-repeat' depending on style */
+  background-position: center;
+  background-size: cover;
+}
+
+.events-frame {
+  height: 1250px;
+}
