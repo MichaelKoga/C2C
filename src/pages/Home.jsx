@@ -7,24 +7,13 @@ import { Navigation, Pagination } from 'swiper/modules';
 import c2c_logo from "../assets/C2C_logo.png";
 import discord_logo from "../assets/discord_icon.png";
 import { ChevronDownIcon } from '@heroicons/react/24/solid';
-import c2c_videos from "../../api/videos.js";
+import videos from "../../src/data/videos.js";
 
 function Home() {
   const [pgaSectionIsOpen, pgaSetIsOpen] = useState(false);
   const [livSectionIsOpen, livSetIsOpen] = useState(false);
   const [stonehengeIsOpen, stonehengeSetIsOpen] = useState(false);
   const [scratchIsOpen, scratchSetIsOpen] = useState(false);
-
-  const [videos, setVideos] = useState([]);
-
-  useEffect(() => {
-    const loadVideos = async () => {
-      const res = await fetch(c2c_videos);
-      const data = await res.json();
-      setVideos(data);
-    }
-    loadVideos();
-  }, []);
 
   const VideoCollage = () => {
     if (!videos.length) return null;
@@ -43,12 +32,14 @@ function Home() {
           >
             {videos.map((src, idx) => (
               <SwiperSlide key={idx}>
-                <iframe
-                  src={`https://www.youtube-nocookie.com/embed/${src}?autoplay=1&mute=1&loop=1&playlist=${src}&controls=0`}
-                  allow="autoplay; fullscreen"
-                  allowFullScreen
-                  title={`Video ${idx}`}
-                />
+                <div className="video-inner-wrapper">
+                  <iframe
+                    src={`https://www.youtube-nocookie.com/embed/${src}?autoplay=1&mute=1&loop=1&playlist=${src}&controls=0`}
+                    allow="autoplay; fullscreen"
+                    allowFullScreen
+                    title={`Video ${idx}`}
+                  />
+                </div>
               </SwiperSlide>
             ))}
           </Swiper>
@@ -67,7 +58,6 @@ function Home() {
           <h2>  Country Club!</h2>
         </div>
         <a href="#clips-section" className="down-arrow">
-          <span className="sr-only">Scroll to next section</span>
           <div
             style={{
               display: 'inline-flex',

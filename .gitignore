@@ -13,3 +13,4 @@ AppDataLocalProgramsMicrosoft
 scraper/snapshot.js
 public/api/
 .env.local
+server/.env

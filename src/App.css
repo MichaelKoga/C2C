@@ -1,8 +1,3 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
-
 html {
   scroll-behavior: smooth;
   scroll-padding-top: 12vh; /* Match your navbar height */
@@ -161,6 +156,23 @@ body {
   border-radius: 32px;
 }
 
+.video-inner-wrapper {
+  box-sizing: border-box;   
+  width: 100%;              
+  height: 100%;             
+  display: flex;            
+  justify-content: center;
+  align-items: center;
+}
+
+.video-inner-wrapper iframe {
+  width: 100%;
+  height: 100%;             
+  max-width: 650px;         
+  aspect-ratio: 16 / 9;     
+  display: block;
+}
+
 .collage-video-container {
   position: relative;
   width: 100%;
@@ -274,6 +286,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 2rem;
 }
 
 .swiper-slide {
@@ -515,10 +528,16 @@ input:checked + .slider:before {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-.dropdown-menu {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+.leaderboard-container,
+.leaderboard-container-flipped {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.dropdown-menu {
+  text-align: center;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   padding: 0.5rem 1rem;
   min-width: max-content;
   padding-right: 2rem; /* or adjust as needed */
@@ -550,6 +569,12 @@ input:checked + .slider:before {
   background-color: rgba(200, 200, 200, 0.7);
   width: fit-content;            /* only as wide as needed */
   max-width: 90%;                /* prevents it from getting too wide on small screens */
+}
+
+.handicap-toggle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .table-wrapper {

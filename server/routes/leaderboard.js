@@ -7,37 +7,30 @@ const leaderboardSchema = new mongoose.Schema({}, { strict: false });
 const Leaderboard = mongoose.model('Leaderboard', leaderboardSchema, 'leaderboards');
 
 // GET /api/leaderboard
-try {
-  router.get('/', async (req, res) => {
-    try {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const skip = (page - 1) * limit;
+router.get('/', async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
 
-      const totalCount = await Leaderboard.countDocuments();
-      const data = await Leaderboard.find().skip(skip).limit(limit);
+    const totalCount = await Leaderboard.countDocuments();
+    const data = await Leaderboard.find().skip(skip).limit(limit);
 
-      console.log('Leaderboard data fetched:', data);
-      res.json({
-        totalCount,
-        page,
-        totalPages: Math.ceil(totalCount / limit),
-        data
-      });
-    } catch (err) {
-      console.error('Error fetching leaderboard:', err);
-      res.status(500).json({ message: err.message });
-    }
-  });
-}
-catch (error) {
-  console.log('Error with route pattern:', '/:date');
-  throw error;
-}
+    console.log('Leaderboard data fetched:', data);
+    res.json({
+      totalCount,
+      page,
+      totalPages: Math.ceil(totalCount / limit),
+      data
+    });
+  } catch (err) {
+    console.error('Error fetching leaderboard:', err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 // Return list of all tournaments (tourney_id, start_date, type)
-try {
-  router.get('/tournaments', async (req, res) => {
+router.get('/tournaments', async (req, res) => {
   try {
     const tournaments = await Leaderboard.find({}, '_id tourney_id end_date type');
     res.json(tournaments);
@@ -46,32 +39,24 @@ try {
     res.status(500).json({ message: err.message });
   }
 });
-} 
-catch (error) {
-  console.log('Error with route pattern:', '/tournaments');
-  throw error;
-}
-
 
 // Return the selected tournament data
-try {
-  router.get('/:id', async (req, res) => {
-    try {
-      const tournament = await Leaderboard.findById(req.params.id);
-      if (!tournament) {
-        return res.status(404).json({ message: 'Tournament not found' });
-      }
-      res.json(tournament);
-    } catch (err) {
-      console.error("Error fetching tournament by ID:", err);
-      res.status(500).json({ message: err.message });
-    }
-  });
-}
-catch (error) {
-  console.log('Error with route pattern:', '/:id');
-  throw error;
-}
+router.get('/:id', async (req, res) => {
+  // Check for valid id
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    return res.status(400).json({ message: 'Invalid tournament id' });
+  }
 
+  try {
+    const tournament = await Leaderboard.findById(req.params.id);
+    if (!tournament) {
+      return res.status(404).json({ message: 'Tournament not found' });
+    }
+    res.json(tournament);
+  } catch (err) {
+    console.error("Error fetching tournament by ID:", err);
+    res.status(500).json({ message: err.message });
+  }
+});
 
 module.exports = router;

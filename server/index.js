@@ -7,10 +7,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-mongoose.connect(process.env.MONGO_URI, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
+mongoose.connect(process.env.MONGO_URI)
 .then(() => console.log('MongoDB connected'))
 .catch(err => console.error('MongoDB connection error:', err));
 
@@ -40,12 +37,12 @@ catch (error) {
 const path = require('path');
 console.log("Registering static frontend route...");
 
-app.use(express.static(path.join(__dirname, '../client/dist'), {
+app.use(express.static(path.join(__dirname, '../dist'), {
   fallthrough: true
 }));
 
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dist', 'index.html'));
+  res.sendFile(path.join(__dirname, '../dist', 'index.html'));
 });
 
 const PORT = process.env.PORT || 5000

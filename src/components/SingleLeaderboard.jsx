@@ -126,7 +126,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
       };
 
       try {
-        const res = await axios.get(leaderboardByIdApi());
+        const res = await axios.get(leaderboardByIdApi(selectedTournamentId));
         let fetchedPlayers = res.data.players || [];
         const tournament = tournaments.find(t => t._id === selectedTournamentId);
 
@@ -188,7 +188,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
           const dates = getStonehengeHandicapDates(endDate);
 
           const responses = await Promise.all(
-            dates.map(date => axios.get(handicapApi()))
+            dates.map(date => axios.get(handicapApi(date)))
           );
 
           console.log("Fetched handicaps:", responses);
@@ -317,8 +317,8 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
   }, [showHandicappedOption]);
 
   const containerClass = flipped
-    ? "leaderboard-container-flipped p-4"
-    : "leaderboard-container p-4";
+    ? "leaderboard-container-flipped p-4 flex flex-col items-center"
+    : "leaderboard-container p-4 flex flex-col items-center";
 
   const maxNameLength = Math.max(...players.map(p => (p.name?.length || 0)));
   const formatScore = (score) => {
@@ -329,7 +329,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
     <>
       <div className={containerClass}>
         <h1 className="text-2xl font-bold mb-4">{title}</h1>
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
           <select
             className="dropdown-menu"
             value={selectedTournamentId || ""}
@@ -370,7 +370,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
               </div>
             )}
             {showHandicappedOption && (
-              <div className="flex justify-center my-2 gap-2 items-center">
+              <div className="handicap-toggle">
                 <span className="scratch-label">Scratch</span>
                 <label className="switch relative">
                   <input

@@ -305,7 +305,7 @@ async def main():
 
   async with async_playwright() as p:
     browser = await p.firefox.launch(
-      headless=True,             # must be True for Lambda
+      headless=False,             # must be True for Lambda
       args=[
         "--no-sandbox",
         "--disable-setuid-sandbox",

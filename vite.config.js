@@ -6,8 +6,13 @@ export default defineConfig({
   resolve: {
     dedupe: ["react", "react-dom"],
   },
-  proxy: {
-    "/api": "http://localhost:3000"
+  server: {
+    proxy: {
+      "/api": {
+        target: "http://localhost:5000",
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     outDir: 'dist', // default output folder for build
