@@ -1,4 +1,4 @@
-import { connectDB } from "../../lib/db";
+import { connectDB } from "../../lib/db.js";
 import Leaderboard from "../../lib/models/Leaderboard";
 
 export default async function handler(req, res) {

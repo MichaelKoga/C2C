@@ -1,4 +1,4 @@
-import { connectDB } from '../lib/db';
+import { connectDB } from '../lib/db.js';
 import Handicap from '../../lib/models/Handicap';
 
 export default async function handler(req, res) {
