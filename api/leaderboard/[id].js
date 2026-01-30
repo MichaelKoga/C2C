@@ -1,5 +1,5 @@
 import { connectDB } from "../../lib/db.js";
-import Leaderboard from "../../lib/models/Leaderboard";
+import Leaderboard from "../../lib/models/Leaderboard.js";
 
 export default async function handler(req, res) {
   try {
