@@ -11,7 +11,8 @@ from rapidfuzz import fuzz
 from playwright.async_api import async_playwright
 
 SIMILARITY_THRESHOLD = 90
-season_start = datetime(2025, 1, 6)
+season_start_2025 = datetime(2025, 1, 6)
+season_start_2026 = datetime(2026, 1, 4)
 
 logging.basicConfig(
   level=logging.INFO,
@@ -37,7 +38,7 @@ MONTH_MAP = {
 
 # Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Tourmaline|Topaz|Turquoise
 
-BIRTHSTONE_TO_MONTH = {
+BIRTHSTONE_TO_MONTH_2025 = {
     "Garnet": "January",
     "Amethyst": "February",
     "Aquamarine": "March",
@@ -52,7 +53,7 @@ BIRTHSTONE_TO_MONTH = {
     "Blue Zircon": "December", 
 }
 
-MONTH_TO_BIRTHSTONE = {
+MONTH_TO_BIRTHSTONE_2025 = {
     "January": "Garnet",
     "February": "Amethyst",
     "March": "Aquamarine",
@@ -65,6 +66,36 @@ MONTH_TO_BIRTHSTONE = {
     "October": "Tourmaline",
     "November": "Topaz",
     "December": "Blue Zircon",
+}
+
+STONE_TO_MONTH_2026 = {
+    "Ember Stone": "January",
+    "Veil Stone": "February",
+    "Tidal Stone": "March",
+    "Prism Stone": "April",
+    "Verdant Stone": "May",
+    "Luster Stone": "June",
+    "Blood Stone": "July",
+    "Sunlit Stone": "August",
+    "Deep Stone": "September",
+    "Shifting Stone": "October",
+    "Hearth Stone": "November",
+    "Sky Stone": "December", 
+}
+
+MONTH_TO_STONE_2026 = {
+    "January": "Ember Stone",
+    "February": "Veil Stone",
+    "March": "Tidal Stone",
+    "April": "Prism Stone",
+    "May": "Verdant Stone",
+    "June": "Luster Stone",
+    "July": "Blood Stone",
+    "August": "Sunlit Stone",
+    "September": "Deep Stone",
+    "October": "Shifting Stone",
+    "November": "Hearth Stone",
+    "December": "Sky Stone",
 }
 
 async def click_leaderboard(page, tournament_locator):
@@ -81,7 +112,7 @@ async def click_leaderboard(page, tournament_locator):
     
 def get_week_number(base_title, end_date):
   # Parse out what week it is from the base title
-  match = re.search(r"Week\s+\d+", base_title)
+  match = re.search(r"Wk\s+\d+", base_title)
   if match:
     week = match.group()
     week_number = int(re.search(r"\d+", week).group())
@@ -89,7 +120,10 @@ def get_week_number(base_title, end_date):
     # Otherwise, calculate from the season start date
     if isinstance(end_date, str):
       end_date = datetime.strptime(end_date, "%Y-%m-%d")
-    week_number = ((end_date - season_start).days // 7) + 1
+      if end_date > season_start_2026:
+        week_number = ((end_date - season_start_2026).days // 7) + 1
+      elif end_date > season_start_2025:
+        week_number = ((end_date - season_start_2025).days // 7) + 1
 
   return week_number
 
@@ -234,15 +268,26 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
 
       print(player_scores)
 
-      tournament_docs.append({
-        "tourney_id": f"Wk {week_number} - {tourney_name}",
-        "type": "Tour",
-        "end_date": end_date,
-        "players": list(player_scores.values())
-      })
+      if "Shootout" in base_title:
+        tourney_name = re.sub(r"\bC2C\sTour\b", "", base_title).strip() # Strip C2C Tour from tourney name
+        tourney_name = re.sub(r"\s*\((?:F9|B9|F18)\)", "", tourney_name)
+        tournament_docs.append({
+          "tourney_id": f"Wk {week_number} - {tourney_name}",
+          "type": "Shootout",
+          "end_date": end_date,
+          "players": list(player_scores.values())
+        })
+      else:
+        tournament_docs.append({
+          "tourney_id": f"Wk {week_number} - {tourney_name}",
+          "type": "Tour",
+          "end_date": end_date,
+          "players": list(player_scores.values())
+        })
     else:
+      # Stonehenge
       month = None
-      birthstone = None
+      stone = None
       # Parse out what month it is
       match_month = re.search(
         r"\b(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|"
@@ -254,22 +299,33 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
         raw_month = match_month.group()
         month = MONTH_MAP[raw_month.lower()]
 
-      match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Tourmaline|Topaz|Blue Zircon)\b", base_title, re.I)
-      if match_birthstone:
-        birthstone = match_birthstone.group()
+      if end_dt > season_start_2026:
+        match_stone = re.search(r"\b(Ember\sStone|Veil\sStone|Tidal\sStone|Prism\sStone|Verdant\sStone|Luster\sStone|Blood\sStone|Sunlit\sStone|Deep\sStone|Shifting\sStone|Hearth\sStone|Sky\sStone)\b", base_title, re.I)
+        if match_stone:
+          stone = match_stone.group()
+      else:
+        match_birthstone = re.search(r"\b(Garnet|Amethyst|Aquamarine|Diamond|Emerald|Pearl|Ruby|Peridot|Sapphire|Tourmaline|Topaz|Blue Zircon)\b", base_title, re.I)
+        if match_birthstone:
+          stone = match_birthstone.group()
 
       print(player_scores)
 
       tourney_id = None
 
-      if month and birthstone:
-        tourney_id = f"{month} - {birthstone}"
-      elif month and not birthstone:
-        birthstone = MONTH_TO_BIRTHSTONE[month]
-        tourney_id = f"{month} - {birthstone}"
-      elif not month and birthstone:
-        month = BIRTHSTONE_TO_MONTH[birthstone]
-        tourney_id = f"{month} - {birthstone}"
+      if month and stone:
+        tourney_id = f"{month} - {stone}"
+      elif month and not stone:
+        if end_dt > season_start_2026:
+          stone = MONTH_TO_STONE_2026[month]
+        else:
+          stone = MONTH_TO_BIRTHSTONE_2025[month]
+        tourney_id = f"{month} - {stone}"
+      elif not month and stone:
+        if end_dt > season_start_2026:
+          month = STONE_TO_MONTH_2026[stone]
+        else:
+          month = BIRTHSTONE_TO_MONTH_2025[stone]
+        tourney_id = f"{month} - {stone}"
       else:
         print(f"Could not ID {meta['full_title']}: Missing month and birthstone information")
 
@@ -357,6 +413,10 @@ async def main():
       full_title = await tourney.locator(".title").inner_text()
       logging.info(f"Tournament name: {full_title}")
       holes_value = await tourney.locator(".holes_value").first.inner_text() # Stonehenge would have 4, but they are all the same
+      # Do not include CTTH (e.g. C2C Tour CTTH)
+      if "CTTH" in full_title: 
+        continue
+      
       if "C2C Stonehenge" in full_title or "C2C Tour" in full_title:
         base_title = re.sub(r"\s*\((?:F9|B9|F18)\)", "", full_title).strip()
         

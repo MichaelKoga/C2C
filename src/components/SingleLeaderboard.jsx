@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import axios from "axios";
 import { handicapApi, leaderboardApi, leaderboardByIdApi, tournamentApi } from "../utils/api";
+import { p, select } from "framer-motion/client";
 
 function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTournamentId, sortFn, filterFn, flipped = false }) {
   const [tournaments, setTournaments] = useState([]);
@@ -127,8 +128,34 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
 
       try {
         const res = await axios.get(leaderboardByIdApi(selectedTournamentId));
-        let fetchedPlayers = res.data.players || [];
+        const normalizePlayer = (p, type) => {
+          if (type === "Stonehenge") {
+            return {
+              ...p,
+              F9: Array.isArray(p.F9) ? p.F9 : [],
+              B9: Array.isArray(p.B9) ? p.B9 : [],
+              F18: Array.isArray(p.F18) ? p.F18 : [],
+            };
+          } else if (type === "Tour") {
+            return {
+              ...p,
+              F9: isNaN(p.F9) ? "-" : parseInt(p.F9),
+              B9: isNaN(p.B9) ? "-" : parseInt(p.B9),
+              F18: isNaN(p.F18) ? "-" : parseInt(p.F18),
+            };
+          } else if (type === "Shootout") {
+            return { 
+              ...p,
+              F9: isNaN(p.F9) ? "-" : parseInt(p.F9),
+              B9: isNaN(p.B9) ? "-" : parseInt(p.B9),
+            };
+          } else {
+            return { ...p };
+          }
+        };
+
         const tournament = tournaments.find(t => t._id === selectedTournamentId);
+        let fetchedPlayers = (res.data.players || []).map(p => normalizePlayer(p, tournament?.type));
 
         // Parse players
         if (tournament?.type === "Stonehenge") {
@@ -169,6 +196,26 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
             const total = F9 + B9 + F18;
 
             const scores = [p.F9, p.B9, p.F18];
+            const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
+            const maxPossible = scores.length;
+            const isComplete = numValid === maxPossible;
+
+            return { ...p, total, numValid, isComplete };
+          }).filter(p => p.total > 0)
+            .sort((a, b) => {
+              if (a.isComplete && !b.isComplete) return -1;
+              if (!a.isComplete && b.isComplete) return 1;
+              if (b.numValid !== a.numValid) return b.numValid - a.numValid;
+              return a.total - b.total;
+            });
+        }
+        else if (tournament?.type === "Shootout") {
+          fetchedPlayers = fetchedPlayers.map(p => {
+            const F9 = isNaN(parseInt(p.F9)) ? 0 : parseInt(p.F9);
+            const B9 = isNaN(parseInt(p.B9)) ? 0 : parseInt(p.B9);
+            const total = F9 + B9;
+
+            const scores = [p.F9, p.B9];
             const numValid = scores.filter(x => !isNaN(parseInt(x))).length;
             const maxPossible = scores.length;
             const isComplete = numValid === maxPossible;
@@ -245,7 +292,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
         }
         else if (handicapMode && showHandicappedOption && tournament?.type === "Tour") {
           try {
-            const hcapRes = await axios.get(handicapApi());
+            const hcapRes = await axios.get(handicapApi(endDate));
             console.log("handicap API response:", hcapRes.data);
 
             const handicapMap = {};
@@ -278,6 +325,38 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
             console.error("Error fetching Tour handicaps:", err);
           }
         }
+        else if (handicapMode && showHandicappedOption && tournament?.type === "Shootout") {
+          try {
+            const hcapRes = await axios.get(handicapApi(endDate));
+            console.log("handicap API response:", hcapRes.data);
+
+            const handicapMap = {};
+            for (const entry of hcapRes.data.handicaps) {
+              handicapMap[entry.name] = entry.avg_handicap;
+            }
+
+            fetchedPlayers = fetchedPlayers.map(p => {
+              const playerHandicap = handicapMap[p.name] || 0;
+              const halfHandicap = playerHandicap / 2; // For 9 holes
+
+              const adjustedF9 = isNaN(parseFloat(p.F9)) ? p.F9 : Math.round(p.F9 - halfHandicap);
+              const adjustedB9 = isNaN(parseFloat(p.B9)) ? p.B9 : Math.round(p.B9 - halfHandicap);
+
+              const total =
+                (typeof adjustedF9 === "number" ? adjustedF9 : 0) +
+                (typeof adjustedB9 === "number" ? adjustedB9 : 0)
+
+              return {
+                ...p,
+                F9: adjustedF9,
+                B9: adjustedB9,
+                total,
+              };
+            });
+          } catch (err) {
+            console.error("Error fetching Tour Shootout handicaps:", err);
+          }
+        }
 
         // Final sort + rank
         fetchedPlayers.sort((a, b) => {
@@ -285,7 +364,7 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
           if (!a.isComplete && b.isComplete) return 1;
           if (b.numValid !== a.numValid) return b.numValid - a.numValid;
 
-          if (tournament?.type === "Tour") {
+          if (tournament?.type === "Tour" || tournament?.type === "Shootout") {
             return a.total - b.total;
           } 
           else if (tournament?.type === "Stonehenge") {
@@ -494,6 +573,31 @@ function SingleLeaderboard({ title, type, selectedTournamentId, setSelectedTourn
                               <td className="score-cell">{formatScore(p.F9)}</td>
                               <td className="score-cell">{formatScore(p.B9)}</td>
                               <td className="score-cell">{formatScore(p.F18)}</td>
+                              <td className="score-cell">{p.total}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </>
+                  ) : selectedTournament?.type === "Shootout" ? (
+                    <>
+                      <thead>
+                        <tr className="bg-gray-200">
+                          <th className="score-cell">Rank</th>
+                          <th className="player-cell">Player</th>
+                          <th className="score-cell">F9</th>
+                          <th className="score-cell">B9</th>
+                          <th className="score-cell">Final</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentPlayers.map((p) => {
+                          return (
+                            <tr key={p.name}>
+                              <td className="score-cell">{p.rank !== null ? p.rank : ""}</td>
+                              <td className="player-cell">{p.name}</td>
+                              <td className="score-cell">{formatScore(p.F9)}</td>
+                              <td className="score-cell">{formatScore(p.B9)}</td>
                               <td className="score-cell">{p.total}</td>
                             </tr>
                           );

@@ -17,6 +17,7 @@ handicaps_collection = db["handicaps"]
 BASELINE = 66
 MAX_ROUNDS = 20
 START_DATE = datetime(2025, 6, 29)
+END_OF_DEC25 = datetime(2025, 12, 31) # used to determine HC calc 2026 beginning
 TODAY = datetime.today().replace(hour=0, minute=0, second=0, microsecond=0)
 WEEK_STEP = timedelta(days=7)
 
@@ -32,8 +33,9 @@ def parse_score(score):
 def collect_rounds(before_date):
   player_rounds = defaultdict(list)
 
-  for doc in leaderboards_collection.find({}, {"players": 1, "end_date": 1}):
+  for doc in leaderboards_collection.find({}, {"players": 1, "end_date": 1, "type": 1}):
     end_date = doc.get("end_date")
+    tourney_type = doc.get("type")
 
     if not end_date:
       continue
@@ -41,6 +43,12 @@ def collect_rounds(before_date):
       end_date = datetime.fromisoformat(end_date)
     # If the tournament has not ended yet
     if end_date > before_date:
+      continue
+    # Exclude Stonehenge from 2026 HC calculations
+    if before_date >= END_OF_DEC25 and tourney_type == "Stonehenge": 
+      continue
+    # Exclude Shootout rounds from HC calculations
+    if tourney_type == "Shootout":
       continue
 
     for player in doc.get("players", []):
@@ -52,6 +60,7 @@ def collect_rounds(before_date):
         if key in player:
           raw = player[key]
 
+          # Stonehenge
           if isinstance(raw, list):
             for score in raw:
               val = parse_score(score) # turns the score into an int

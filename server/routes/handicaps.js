@@ -15,6 +15,12 @@ try {
     try {
       const dateStr = req.params.date;
       const date = new Date(dateStr);
+      console.log(date);
+      if (isNaN(date.getTime())) {
+        return res.status(400).json({
+          error: "Invalid date format. Use YYYY-MM-DD."
+        });
+      }
 
       const doc = await Handicap.findOne({_id: { $lte: date } })
         .sort({ _id: -1 }) // as the date
