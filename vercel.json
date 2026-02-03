@@ -1,0 +1,8 @@
+{
+  "git": {
+    "deploymentEnabled": {
+      "main": true
+    },
+    "ignoredBuildStep": "git diff --quiet HEAD^ HEAD -- client server lib package.json package-lock.json vercel.json"
+  }
+}
