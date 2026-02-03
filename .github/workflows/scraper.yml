@@ -2,7 +2,7 @@ name: Run Scraper
 
 # Trigger manually or on a schedule
 on:
-  workflow_dispatch:   # allows manual runs
+  # workflow_dispatch:   # allows manual runs
   schedule:
     - cron: '55 * * * *'  # 55th minute every hour
 
