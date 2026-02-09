@@ -127,6 +127,14 @@ def get_week_number(base_title, end_date):
 
   return week_number
 
+async def is_active_tournament(tourney):
+  start_at = tourney.locator(".field.start_at")
+
+  if await start_at.is_visible():
+    return False
+  
+  return True
+
 async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url, closed_url):
   tournament_docs = []
 
@@ -170,7 +178,11 @@ async def scrape_leaderboards(page, tournament_metadata, tourney_type, open_url,
       end_date = end_dt.date().isoformat()
 
       # Click leaderboard
-      await click_leaderboard(page, tourney)
+      if await is_active_tournament(tourney):
+        await click_leaderboard(page, tourney)
+      else:
+        logging.info(f"Tournament {title} is currently not active and can't be scraped...")
+        break
 
       rows = page.locator('//table//tr[@data-uid]')
       row_count = await rows.count()
@@ -361,7 +373,7 @@ async def main():
 
   async with async_playwright() as p:
     browser = await p.firefox.launch(
-      headless=True,             # must be True for Lambda
+      headless=False,             # must be True for Lambda
       args=[
         "--no-sandbox",
         "--disable-setuid-sandbox",
