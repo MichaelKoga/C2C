@@ -371,9 +371,12 @@ async def main():
   db = client["tournaments_db"]
   collection = db["leaderboards"]
 
+  # Make head-on for local, headless for remote
+  HEADLESS = os.getenv("CI", "false").lower() == "true"
+
   async with async_playwright() as p:
     browser = await p.firefox.launch(
-      headless=False,             # must be True for Lambda
+      headless=HEADLESS,             
       args=[
         "--no-sandbox",
         "--disable-setuid-sandbox",
